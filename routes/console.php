@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+Schedule::command('warranties:mark-expired')->dailyAt('01:00')->withoutOverlapping();
+Schedule::command('odoo:retry-failed-validations')->hourly()->withoutOverlapping();
+Schedule::command('notifications:retry-failed')->hourly()->withoutOverlapping();
+Schedule::command('odoo:import-pos-sales')->everyFifteenMinutes()->withoutOverlapping();

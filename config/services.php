@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'kelec' => [
+        'integration_token' => env('INTEGRATION_API_TOKEN'),
+    ],
+
 ];
