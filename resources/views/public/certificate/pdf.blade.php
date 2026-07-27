@@ -4,14 +4,16 @@
     <meta charset="utf-8">
     <title>{{ $warranty->reference }} Certificate</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; color: #1e293b; }
-        h1 { color: #b91c1c; }
+        body { font-family: DejaVu Sans, sans-serif; color: #111827; }
+        h1 { color: #DC2626; }
         .grid td { padding: 8px 0; vertical-align: top; }
         .label { color: #64748b; font-size: 12px; }
         .value { font-size: 14px; font-weight: bold; }
+        .accent { height: 4px; background: linear-gradient(90deg, #DC2626, #991B1B); margin-bottom: 16px; }
     </style>
 </head>
 <body>
+    <div class="accent"></div>
     <h1>K-Elec Warranty Certificate</h1>
     <p>Reference: <strong>{{ $warranty->reference }}</strong></p>
     <table class="grid" width="100%">

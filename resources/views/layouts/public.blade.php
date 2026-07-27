@@ -4,20 +4,30 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'K-Elec Warranties')</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700" rel="stylesheet" />
+    <link rel="icon" type="image/png" sizes="32x32" href="https://k-elec.co.ke/favicon/favicon-32x32.png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased">
-    <header class="border-b border-slate-200 bg-white">
+<body class="bg-brand-soft text-brand-ink antialiased">
+    <div class="brand-accent-bar h-1 w-full"></div>
+    <header class="border-b border-gray-200 bg-white">
         <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-            <a href="{{ route('home') }}" class="text-xl font-bold text-red-700">K-Elec Warranties</a>
-            <nav class="flex items-center gap-4 text-sm font-medium">
-                <a href="{{ route('register-warranty.create') }}" class="hover:text-red-700">Register</a>
-                <a href="{{ route('warranty.lookup') }}" class="hover:text-red-700">Lookup</a>
-                <a href="{{ route('privacy-policy') }}" class="hover:text-red-700">Privacy</a>
+            <a href="{{ route('home') }}" class="flex items-center gap-2">
+                <span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand text-sm font-bold text-white">KE</span>
+                <span class="leading-tight">
+                    <span class="block text-lg font-bold text-brand">K-Elec</span>
+                    <span class="block text-xs font-medium uppercase tracking-wide text-brand-navy">Warranties</span>
+                </span>
+            </a>
+            <nav class="flex items-center gap-4 text-sm font-medium text-brand-ink">
+                <a href="{{ route('register-warranty.create') }}" class="hover:text-brand">Register</a>
+                <a href="{{ route('warranty.lookup') }}" class="hover:text-brand">Lookup</a>
+                <a href="{{ route('privacy-policy') }}" class="hover:text-brand">Privacy</a>
                 @auth
-                    <a href="{{ route('admin.dashboard') }}" class="rounded-md bg-slate-900 px-3 py-2 text-white">Admin</a>
+                    <a href="{{ route('admin.dashboard') }}" class="rounded-md bg-brand-navy px-3 py-2 text-white hover:bg-brand-ink">Admin</a>
                 @else
-                    <a href="{{ route('login') }}" class="rounded-md bg-red-700 px-3 py-2 text-white">Staff Login</a>
+                    <a href="{{ route('login') }}" class="btn-brand">Staff Login</a>
                 @endauth
             </nav>
         </div>
@@ -46,12 +56,20 @@
         @yield('content')
     </main>
 
-    <footer class="border-t border-slate-200 bg-white">
-        <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-slate-500 md:flex-row md:justify-between">
-            <span>&copy; {{ date('Y') }} K-Elec. All rights reserved.</span>
-            <div class="flex gap-4">
-                <a href="{{ route('privacy-policy') }}">Privacy Policy</a>
-                <a href="{{ route('warranty-terms') }}">Warranty Terms</a>
+    <footer class="border-t border-gray-200 bg-white">
+        <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
+            <div>
+                <span class="font-semibold text-brand-navy">K-Elec</span>
+                <span> · Korean Tech, Kenyan Trust</span>
+                <div class="mt-1">&copy; {{ date('Y') }} K-Elec. All rights reserved.</div>
+            </div>
+            <div class="flex flex-col gap-1 md:items-end">
+                <a href="tel:+254716052243" class="hover:text-brand">0716 052 243</a>
+                <div class="flex gap-4">
+                    <a href="{{ route('privacy-policy') }}" class="hover:text-brand">Privacy Policy</a>
+                    <a href="{{ route('warranty-terms') }}" class="hover:text-brand">Warranty Terms</a>
+                    <a href="https://k-elec.co.ke/" class="hover:text-brand" target="_blank" rel="noopener">k-elec.co.ke</a>
+                </div>
             </div>
         </div>
     </footer>

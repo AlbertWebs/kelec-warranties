@@ -4,14 +4,21 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Admin') - K-Elec Warranties</title>
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700" rel="stylesheet" />
+    <link rel="icon" type="image/png" sizes="32x32" href="https://k-elec.co.ke/favicon/favicon-32x32.png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-slate-100 text-slate-800 antialiased" x-data="{ sidebarOpen: false }">
+<body class="bg-brand-soft text-brand-ink antialiased" x-data="{ sidebarOpen: false }">
 <div class="min-h-screen md:flex">
-    <aside class="fixed inset-y-0 left-0 z-40 w-72 transform bg-slate-950 text-slate-100 transition md:static md:translate-x-0"
+    <aside class="fixed inset-y-0 left-0 z-40 w-72 transform bg-brand-ink text-slate-100 transition md:static md:translate-x-0"
            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
-        <div class="flex h-16 items-center border-b border-slate-800 px-5 text-lg font-semibold">
-            <span class="text-red-400">K-Elec</span>&nbsp;Admin
+        <div class="flex h-16 items-center gap-2 border-b border-white/10 px-5">
+            <span class="inline-flex h-8 w-8 items-center justify-center rounded bg-brand text-xs font-bold text-white">KE</span>
+            <div class="leading-tight">
+                <div class="text-sm font-bold text-white">K-Elec</div>
+                <div class="text-[11px] uppercase tracking-wide text-white/60">Admin</div>
+            </div>
         </div>
         <nav class="space-y-1 p-4 text-sm">
             @php
@@ -35,7 +42,7 @@
             @endphp
             @foreach ($links as [$route, $label])
                 <a href="{{ route($route) }}"
-                   class="block rounded-md px-3 py-2 {{ request()->routeIs($route) || request()->routeIs(str_replace('.index', '.*', $route)) ? 'bg-red-700 text-white' : 'hover:bg-slate-800' }}">
+                   class="block rounded-md px-3 py-2 {{ request()->routeIs($route) || request()->routeIs(str_replace('.index', '.*', $route)) ? 'bg-brand text-white' : 'hover:bg-white/10' }}">
                     {{ $label }}
                 </a>
             @endforeach
@@ -43,9 +50,9 @@
     </aside>
 
     <div class="flex min-h-screen flex-1 flex-col">
-        <header class="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4">
+        <header class="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4">
             <button class="rounded-md border px-3 py-1 text-sm md:hidden" @click="sidebarOpen = !sidebarOpen">Menu</button>
-            <div class="text-sm text-slate-500">
+            <div class="text-sm text-gray-500">
                 @isset($breadcrumbs)
                     {{ $breadcrumbs }}
                 @else
@@ -53,11 +60,11 @@
                 @endisset
             </div>
             <div class="flex items-center gap-3 text-sm">
-                <a href="{{ route('home') }}" class="text-slate-500 hover:text-slate-800">Public site</a>
+                <a href="{{ route('home') }}" class="text-gray-500 hover:text-brand">Public site</a>
                 <span>{{ auth()->user()->name }}</span>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
-                    <button class="rounded-md bg-slate-900 px-3 py-1.5 text-white">Logout</button>
+                    <button class="rounded-md bg-brand-navy px-3 py-1.5 text-white hover:bg-brand-ink">Logout</button>
                 </form>
             </div>
         </header>
