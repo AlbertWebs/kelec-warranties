@@ -22,29 +22,54 @@ class OdooClient
     }
 
     /**
-     * @return array{ok: bool, message: string, uid?: int}
+     * @return array{ok: bool, message: string, flash: string, uid?: int}
      */
     public function testConnection(): array
     {
-        if ($this->mockMode()) {
-            $this->log('authenticate', 'mock', 200, null, 'success');
+        $settings = app(SettingsService::class);
+        $baseUrl = trim((string) $settings->get('odoo_base_url', ''));
+        $database = trim((string) $settings->get('odoo_database', ''));
+        $username = trim((string) $settings->get('odoo_username', ''));
+        $apiKey = (string) $settings->get('odoo_api_key', '');
 
-            return ['ok' => true, 'message' => 'Mock Odoo connection successful.', 'uid' => 1];
-        }
+        if ($baseUrl === '' || $database === '' || $username === '' || $apiKey === '') {
+            $this->log('authenticate', $baseUrl !== '' ? $baseUrl.'/jsonrpc' : null, null, 'Incomplete Odoo credentials', 'failed');
 
-        if (! $this->enabled()) {
-            return ['ok' => false, 'message' => 'Odoo integration is disabled.'];
+            return [
+                'ok' => false,
+                'flash' => 'error',
+                'message' => $this->mockMode()
+                    ? 'Mock mode is enabled and Odoo is not configured. Add Base URL, database, username, and API key in Settings to test a live connection.'
+                    : 'Odoo connection failed: Base URL, database, username, and API key are required.',
+            ];
         }
 
         try {
             $uid = $this->authenticate();
+
+            if ($uid <= 0) {
+                throw new \RuntimeException('Odoo authentication returned an invalid user id.');
+            }
+
             $this->log('authenticate', $this->baseUrl().'/jsonrpc', 200, null, 'success');
 
-            return ['ok' => true, 'message' => 'Connected to Odoo successfully.', 'uid' => $uid];
+            $message = 'Connected to Odoo successfully.';
+            if ($this->mockMode()) {
+                $message .= ' Note: mock mode is still enabled for day-to-day syncs.';
+            }
+            if (! $this->enabled()) {
+                $message .= ' Note: Odoo integration is currently disabled.';
+            }
+
+            return ['ok' => true, 'flash' => 'success', 'message' => $message, 'uid' => $uid];
         } catch (Throwable $e) {
             $this->log('authenticate', $this->baseUrl().'/jsonrpc', 500, $e->getMessage(), 'failed');
 
-            return ['ok' => false, 'message' => 'Unable to connect to Odoo.'];
+            return [
+                'ok' => false,
+                'flash' => 'error',
+                'message' => 'Unable to connect to Odoo: '.$e->getMessage(),
+            ];
         }
     }
 
@@ -198,6 +223,12 @@ class OdooClient
     protected function authenticate(): int
     {
         $settings = app(SettingsService::class);
+        $baseUrl = $this->baseUrl();
+
+        if ($baseUrl === '') {
+            throw new \RuntimeException('Odoo base URL is not configured.');
+        }
+
         $payload = [
             'jsonrpc' => '2.0',
             'method' => 'call',
@@ -215,13 +246,28 @@ class OdooClient
         ];
 
         $response = Http::timeout((int) $settings->get('odoo_timeout', 15))
-            ->post($this->baseUrl().'/jsonrpc', $payload);
+            ->acceptJson()
+            ->post($baseUrl.'/jsonrpc', $payload);
 
-        if (! $response->successful() || ! $response->json('result')) {
-            throw new \RuntimeException('Odoo authentication failed.');
+        if (! $response->successful()) {
+            throw new \RuntimeException('Odoo server responded with HTTP '.$response->status().'.');
         }
 
-        return (int) $response->json('result');
+        if ($response->json('error')) {
+            $error = $response->json('error.message')
+                ?? $response->json('error.data.message')
+                ?? 'JSON-RPC error';
+
+            throw new \RuntimeException((string) $error);
+        }
+
+        $result = $response->json('result');
+
+        if ($result === false || $result === null || $result === '') {
+            throw new \RuntimeException('Authentication failed. Check database, username, and API key.');
+        }
+
+        return (int) $result;
     }
 
     /**

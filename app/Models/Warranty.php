@@ -137,6 +137,11 @@ class Warranty extends Model
         return $this->hasMany(NotificationLog::class)->latest();
     }
 
+    public function claims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class)->latest();
+    }
+
     public function remainingDays(): ?int
     {
         if (! $this->warranty_expiry_date) {

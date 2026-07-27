@@ -79,6 +79,121 @@
     .legal-content a {
         @apply font-medium text-brand underline decoration-brand/30 underline-offset-2 hover:decoration-brand;
     }
+
+    .auth-input {
+        @apply block w-full rounded-md border-gray-300 text-sm shadow-sm
+            placeholder:text-xs placeholder:font-normal placeholder:text-gray-400
+            focus:border-brand focus:ring-brand;
+    }
+
+    .auth-label {
+        @apply text-sm font-medium leading-none text-brand-navy;
+    }
+
+    .auth-field {
+        @apply flex flex-col gap-1;
+    }
+
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    .admin-nav-link {
+        @apply flex items-center gap-2.5 rounded-lg px-2.5 py-2 font-medium text-slate-300 transition;
+    }
+
+    .admin-nav-link:hover {
+        @apply bg-white/10 text-white;
+    }
+
+    .admin-nav-link:hover .admin-nav-icon {
+        @apply bg-white/10 text-white;
+    }
+
+    .admin-nav-link-active {
+        @apply bg-brand/90 text-white shadow-sm shadow-black/20;
+    }
+
+    .admin-nav-link-active:hover {
+        @apply bg-brand text-white;
+    }
+
+    .admin-nav-icon {
+        @apply inline-flex h-8 w-8 items-center justify-center rounded-md bg-white/5 text-white/55 transition;
+    }
+
+    .admin-nav-icon-active {
+        @apply bg-white/15 text-white;
+    }
+
+    .admin-table-wrap {
+        @apply overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm;
+    }
+
+    .admin-table-scroll {
+        @apply overflow-x-auto;
+    }
+
+    .admin-table {
+        @apply min-w-full text-left text-sm;
+    }
+
+    .admin-table thead tr {
+        @apply border-b border-slate-200 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500;
+    }
+
+    .admin-table th {
+        @apply px-4 py-3 font-semibold;
+    }
+
+    .admin-table tbody {
+        @apply divide-y divide-slate-100;
+    }
+
+    .admin-table tbody tr {
+        @apply transition hover:bg-brand-soft/80;
+    }
+
+    .admin-table td {
+        @apply px-4 py-3.5 align-top text-slate-700;
+    }
+
+    .admin-table-primary {
+        @apply font-medium text-brand-ink;
+    }
+
+    .admin-table-mono {
+        @apply font-mono text-[13px] font-semibold text-brand;
+    }
+
+    .admin-table-meta {
+        @apply mt-0.5 text-xs text-slate-500;
+    }
+
+    .admin-table-link {
+        @apply font-semibold text-brand hover:underline;
+    }
+
+    .admin-table-action {
+        @apply inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-slate-500 opacity-70 transition hover:bg-white hover:text-brand group-hover:opacity-100;
+    }
+
+    .admin-table-empty {
+        @apply px-4 py-16 text-center text-sm text-slate-500;
+    }
+
+    .admin-page-title {
+        @apply text-2xl font-bold text-brand-ink;
+    }
+
+    .admin-page-subtitle {
+        @apply mt-1 text-sm text-slate-500;
+    }
 }
 
 @keyframes footerPulse {

@@ -20,10 +20,17 @@ class CustomerFactory extends Factory
             'full_name' => $this->faker->name(),
             'mobile_number' => $mobile,
             'mobile_normalized' => '254'.substr($mobile, 1),
-            'email' => $this->faker->optional()->safeEmail(),
+            'email' => $this->faker->unique()->safeEmail(),
             'county' => 'Nairobi',
             'town' => 'Nairobi',
             'marketing_consent' => false,
         ];
+    }
+
+    public function withPassword(string $password = 'password'): static
+    {
+        return $this->state(fn () => [
+            'password' => $password,
+        ]);
     }
 }

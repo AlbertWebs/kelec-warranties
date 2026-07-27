@@ -17,7 +17,12 @@ class DashboardController extends Controller
         $stats = [
             'total' => Warranty::count(),
             'active' => Warranty::where('status', WarrantyStatus::Active)->count(),
-            'pending' => Warranty::where('status', WarrantyStatus::PendingVerification)->count(),
+            'pending' => Warranty::whereIn('status', [
+                WarrantyStatus::PendingVerification,
+                WarrantyStatus::UnderReview,
+            ])->count(),
+            'pending_verification' => Warranty::where('status', WarrantyStatus::PendingVerification)->count(),
+            'under_review' => Warranty::where('status', WarrantyStatus::UnderReview)->count(),
             'rejected' => Warranty::where('status', WarrantyStatus::Rejected)->count(),
             'expired' => Warranty::where('status', WarrantyStatus::Expired)->count(),
             'today' => Warranty::whereDate('created_at', today())->count(),

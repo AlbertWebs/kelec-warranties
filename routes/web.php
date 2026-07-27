@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\ClaimController as AdminClaimController;
 use App\Http\Controllers\Admin\CustomerController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DealerController;
+use App\Http\Controllers\Admin\DemoDataController;
 use App\Http\Controllers\Admin\DocumentDownloadController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\OdooController;
@@ -79,6 +81,10 @@ Route::middleware(['auth', 'verified', 'active', 'admin'])->prefix('admin')->nam
     Route::post('/warranties/{warranty}/notes', [WarrantyController::class, 'addNote'])->name('warranties.notes');
     Route::post('/warranties/{warranty}/resend', [WarrantyController::class, 'resend'])->name('warranties.resend');
 
+    Route::get('/claims', [AdminClaimController::class, 'index'])->name('claims.index');
+    Route::get('/claims/{claim}', [AdminClaimController::class, 'show'])->name('claims.show');
+    Route::put('/claims/{claim}', [AdminClaimController::class, 'update'])->name('claims.update');
+
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
     Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
@@ -109,6 +115,10 @@ Route::middleware(['auth', 'verified', 'active', 'admin'])->prefix('admin')->nam
     Route::put('/legal-pages', [LegalContentController::class, 'update'])->name('legal.update');
 
     Route::get('/documents/{document}/download', DocumentDownloadController::class)->name('documents.download');
+
+    Route::get('/danger-zone', [DemoDataController::class, 'show'])->name('demo-data.show');
+    Route::post('/danger-zone/seed', [DemoDataController::class, 'seed'])->name('demo-data.seed');
+    Route::post('/danger-zone/wipe', [DemoDataController::class, 'wipe'])->name('demo-data.wipe');
 });
 
 Route::middleware('auth')->group(function () {
@@ -118,3 +128,4 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+require __DIR__.'/customer.php';

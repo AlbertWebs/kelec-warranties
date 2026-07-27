@@ -39,6 +39,12 @@ class WarrantyController extends Controller
             'purchaseSources' => PurchaseSource::orderBy('sort_order')->get(),
             'dealers' => Dealer::orderBy('name')->get(),
             'statuses' => WarrantyStatus::cases(),
+            'pendingCount' => Warranty::query()
+                ->whereIn('status', [
+                    WarrantyStatus::PendingVerification->value,
+                    WarrantyStatus::UnderReview->value,
+                ])
+                ->count(),
         ]);
     }
 
@@ -67,6 +73,7 @@ class WarrantyController extends Controller
             'consents',
             'notificationLogs',
             'informationRequests',
+            'claims',
         ]);
 
         return view('admin.warranties.show', compact('warranty'));

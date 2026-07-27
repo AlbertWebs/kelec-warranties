@@ -13,26 +13,31 @@
     <div class="brand-accent-bar h-1 w-full shrink-0"></div>
     <header class="sticky top-0 z-50 shrink-0 border-b border-gray-200 bg-white/95 backdrop-blur">
         <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:py-3">
-            <a href="{{ route('home') }}" class="flex min-w-0 items-center gap-2.5">
-                <span class="inline-flex shrink-0 items-center">
-                    <x-application-logo class="h-8 w-auto sm:h-9" />
-                </span>
-                <span class="min-w-0 leading-tight">
-                    <span class="block truncate text-[11px] font-semibold uppercase tracking-wider text-brand-navy sm:text-xs">Warranties</span>
-                    <span class="hidden text-xs text-gray-500 sm:block">Register &amp; look up</span>
-                </span>
+            <a href="{{ route('home') }}" class="inline-flex shrink-0 items-center">
+                <x-application-logo class="h-8 w-auto sm:h-9" />
             </a>
 
             <nav class="hidden items-center gap-1 text-sm font-medium text-brand-ink md:flex">
-                <a href="{{ route('register-warranty.create') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Register</a>
-                <a href="{{ route('warranty.lookup') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Lookup</a>
-                <a href="{{ route('find-store') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Stores</a>
-                <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Main site</a>
-                <a href="{{ route('privacy-policy') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Privacy</a>
-                @auth
-                    <a href="{{ route('admin.dashboard') }}" class="ml-1 rounded-md bg-brand-navy px-3 py-2 text-white hover:bg-brand-ink">Admin</a>
+                <a href="https://k-elec.co.ke/brand-shops" target="_blank" rel="noopener" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Brand Shops</a>
+                <a href="https://k-elec.co.ke/brand-shops" target="_blank" rel="noopener" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Our Outlets</a>
+                <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Home</a>
+                @auth('customer')
+                    <a href="{{ route('customer.warranties.index') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">My Warranties</a>
+                    <a href="{{ route('customer.claims.index') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Claims</a>
+                    <form method="POST" action="{{ route('customer.logout') }}" class="ml-1">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-1.5 rounded-md bg-brand-navy px-3 py-2 text-white hover:bg-brand-ink">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Logout
+                        </button>
+                    </form>
                 @else
-                    <a href="{{ route('login') }}" class="btn-brand ml-1 !px-3 !py-2 text-sm">Staff Login</a>
+                    <a href="{{ route('customer.login') }}" class="btn-brand ml-1 !px-3 !py-2 text-sm">Customer Login</a>
+                @endauth
+                @auth('web')
+                    <a href="{{ route('admin.dashboard') }}" class="ml-1 rounded-md border border-brand-navy px-3 py-2 text-brand-navy hover:bg-brand-soft">Admin</a>
                 @endauth
             </nav>
 
@@ -63,20 +68,27 @@
              class="border-t border-gray-100 bg-white md:hidden"
              @click.outside="mobileNavOpen = false">
             <nav class="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 text-sm font-medium text-brand-ink">
-                <a href="{{ route('register-warranty.create') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Register warranty</a>
-                <a href="{{ route('warranty.lookup') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Lookup warranty</a>
-                <a href="{{ route('find-store') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">
-                    Find nearest store
-                    <span class="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">Soon</span>
-                </a>
-                <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand">Main website ↗</a>
-                <a href="{{ route('privacy-policy') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Privacy Policy</a>
-                <a href="{{ route('warranty-terms') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Warranty Terms</a>
+                <a href="https://k-elec.co.ke/brand-shops" target="_blank" rel="noopener" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand">Brand Shops ↗</a>
+                <a href="https://k-elec.co.ke/brand-shops" target="_blank" rel="noopener" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand">Our Outlets ↗</a>
+                <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand">Home ↗</a>
                 <div class="my-1 border-t border-gray-100"></div>
-                @auth
-                    <a href="{{ route('admin.dashboard') }}" class="rounded-lg bg-brand-navy px-3 py-3 text-center text-white" @click="mobileNavOpen = false">Admin dashboard</a>
+                @auth('customer')
+                    <a href="{{ route('customer.warranties.index') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">My Warranties</a>
+                    <a href="{{ route('customer.claims.index') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Claims</a>
+                    <form method="POST" action="{{ route('customer.logout') }}">
+                        @csrf
+                        <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-navy px-3 py-3 text-center text-white">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Logout
+                        </button>
+                    </form>
                 @else
-                    <a href="{{ route('login') }}" class="btn-brand text-center" @click="mobileNavOpen = false">Staff Login</a>
+                    <a href="{{ route('customer.login') }}" class="btn-brand text-center" @click="mobileNavOpen = false">Customer Login</a>
+                @endauth
+                @auth('web')
+                    <a href="{{ route('admin.dashboard') }}" class="rounded-lg border border-brand-navy px-3 py-3 text-center text-brand-navy" @click="mobileNavOpen = false">Admin dashboard</a>
                 @endauth
             </nav>
         </div>
@@ -143,15 +155,11 @@
                 <ul class="mt-3 space-y-2 text-sm">
                     <li><a href="{{ route('register-warranty.create') }}" class="footer-link">Register warranty</a></li>
                     <li><a href="{{ route('warranty.lookup') }}" class="footer-link">Lookup warranty</a></li>
-                    <li>
-                        <a href="{{ route('find-store') }}" class="footer-link inline-flex items-center gap-2">
-                            Find nearest store
-                            <span class="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">Coming soon</span>
-                        </a>
-                    </li>
+                    <li><a href="https://k-elec.co.ke/brand-shops" class="footer-link" target="_blank" rel="noopener">Brand Shops / Outlets</a></li>
                     <li><a href="https://k-elec.co.ke/" class="footer-link" target="_blank" rel="noopener">Main website (k-elec.co.ke)</a></li>
                     <li><a href="{{ route('privacy-policy') }}" class="footer-link">Privacy Policy</a></li>
                     <li><a href="{{ route('warranty-terms') }}" class="footer-link">Warranty Terms</a></li>
+                    <li><a href="{{ route('login') }}" class="footer-link">Staff Login</a></li>
                 </ul>
             </div>
 

@@ -17,11 +17,19 @@ class OdooController extends Controller
     {
         abort_unless($request->user()->can('odoo.view'), 403);
 
+        $settings = app(\App\Services\SettingsService::class);
+
         return view('admin.odoo.index', [
             'logs' => OdooSyncLog::latest()->paginate(20),
             'failures' => IntegrationFailure::latest()->limit(20)->get(),
             'lastSuccess' => OdooSyncLog::where('status', 'success')->latest()->first(),
             'pendingFailures' => IntegrationFailure::where('status', 'pending')->count(),
+            'odooEnabled' => (bool) $settings->get('odoo_enabled', false),
+            'odooMockMode' => (bool) $settings->get('odoo_mock_mode', true),
+            'odooConfigured' => filled($settings->get('odoo_base_url'))
+                && filled($settings->get('odoo_database'))
+                && filled($settings->get('odoo_username'))
+                && filled($settings->get('odoo_api_key')),
         ]);
     }
 
@@ -31,7 +39,7 @@ class OdooController extends Controller
 
         $result = $syncService->testConnection();
 
-        return back()->with($result['ok'] ? 'success' : 'error', $result['message']);
+        return back()->with($result['flash'] ?? ($result['ok'] ? 'success' : 'error'), $result['message']);
     }
 
     public function retryFailures(Request $request): RedirectResponse

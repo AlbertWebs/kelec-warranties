@@ -48,6 +48,8 @@ class DatabaseSeeder extends Seeder
             'roles.manage',
             'audit_logs.view',
             'settings.manage',
+            'claims.view',
+            'claims.manage',
         ];
 
         foreach ($permissions as $permission) {
@@ -74,6 +76,8 @@ class DatabaseSeeder extends Seeder
             'odoo.view',
             'notifications.view',
             'reports.view',
+            'claims.view',
+            'claims.manage',
         ]);
 
         $support->syncPermissions([
@@ -83,6 +87,8 @@ class DatabaseSeeder extends Seeder
             'products.view',
             'dealers.view',
             'notifications.view',
+            'claims.view',
+            'claims.manage',
         ]);
 
         $admin = User::query()->updateOrCreate(

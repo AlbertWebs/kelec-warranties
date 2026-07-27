@@ -2,26 +2,37 @@
 
 namespace App\Models;
 
+use App\Enums\WarrantyStatus;
+use Database\Factories\CustomerFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
-class Customer extends Model
+class Customer extends Authenticatable
 {
-    use HasFactory, SoftDeletes;
+    /** @use HasFactory<CustomerFactory> */
+    use HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'full_name',
         'mobile_number',
         'mobile_normalized',
         'email',
+        'password',
         'county',
         'town',
         'odoo_customer_id',
         'marketing_consent',
         'marketing_consent_at',
         'possible_duplicate',
+        'email_verified_at',
+    ];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
     ];
 
     protected function casts(): array
@@ -30,12 +41,19 @@ class Customer extends Model
             'marketing_consent' => 'boolean',
             'marketing_consent_at' => 'datetime',
             'possible_duplicate' => 'boolean',
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
         ];
     }
 
     public function warranties(): HasMany
     {
         return $this->hasMany(Warranty::class);
+    }
+
+    public function claims(): HasMany
+    {
+        return $this->hasMany(WarrantyClaim::class);
     }
 
     public function consents(): HasMany
@@ -50,7 +68,17 @@ class Customer extends Model
 
     public function activeWarrantiesCount(): int
     {
-        return $this->warranties()->where('status', 'active')->count();
+        return $this->warranties()->where('status', WarrantyStatus::Active)->count();
+    }
+
+    public function claimableWarranties(): HasMany
+    {
+        return $this->warranties()->where('status', WarrantyStatus::Active);
+    }
+
+    public function hasPortalAccount(): bool
+    {
+        return filled($this->password);
     }
 
     public function maskedMobile(): string

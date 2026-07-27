@@ -26,6 +26,22 @@ return Application::configure(basePath: dirname(__DIR__))
             'active' => EnsureUserIsActive::class,
             'integration' => VerifyIntegrationToken::class,
         ]);
+
+        $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {
+            if ($request->is('customer') || $request->is('customer/*')) {
+                return route('customer.login');
+            }
+
+            return route('login');
+        });
+
+        $middleware->redirectUsersTo(function (\Illuminate\Http\Request $request) {
+            if ($request->is('customer/login') || $request->is('customer/register')) {
+                return route('customer.warranties.index');
+            }
+
+            return route('dashboard');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
