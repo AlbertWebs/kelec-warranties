@@ -25,12 +25,12 @@
 </div>
 </section>
 <section class="rounded-xl border bg-white p-4 shadow-sm">
-<h2 class="font-semibold">Privacy</h2>
-<div class="mt-3 grid gap-3">
+<h2 class="font-semibold">Privacy &amp; legal</h2>
+<p class="mt-2 text-sm text-slate-600">Edit the full Privacy Policy and Warranty Terms on the dedicated Legal Pages screen (supports Markdown).</p>
+<a href="{{ route('admin.legal.edit') }}" class="mt-3 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark">Open Legal Pages editor</a>
+<div class="mt-4 grid gap-3 md:grid-cols-2">
 <input name="privacy_policy_url" value="{{ old('privacy_policy_url', $settings['privacy_policy_url'] ?? '') }}" class="rounded-lg border-slate-300" placeholder="Privacy Policy URL">
 <input name="warranty_terms_url" value="{{ old('warranty_terms_url', $settings['warranty_terms_url'] ?? '') }}" class="rounded-lg border-slate-300" placeholder="Warranty Terms URL">
-<textarea name="privacy_policy_content" rows="4" class="rounded-lg border-slate-300" placeholder="Privacy policy content">{{ old('privacy_policy_content', $settings['privacy_policy_content'] ?? '') }}</textarea>
-<textarea name="warranty_terms_content" rows="4" class="rounded-lg border-slate-300" placeholder="Warranty terms content">{{ old('warranty_terms_content', $settings['warranty_terms_content'] ?? '') }}</textarea>
 </div>
 </section>
 <section class="rounded-xl border bg-white p-4 shadow-sm">

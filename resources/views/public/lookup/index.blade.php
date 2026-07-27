@@ -3,26 +3,49 @@
 @section('title', 'Warranty Lookup')
 
 @section('content')
-<div class="mx-auto max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-    <h1 class="text-3xl font-bold">Lookup active warranty</h1>
-    <p class="mt-2 text-slate-600">For privacy, a mobile number is required together with your warranty reference or serial number.</p>
+<div class="mx-auto max-w-xl">
+    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-100 bg-gradient-to-br from-brand-soft via-white to-white px-6 py-8 text-center sm:px-8">
+            <p class="text-xs font-semibold uppercase tracking-wider text-brand">Secure lookup</p>
+            <h1 class="mt-2 text-3xl font-bold tracking-tight text-brand-ink">Find your warranty</h1>
+            <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-gray-600">
+                Enter your warranty reference or serial number, plus the mobile number used at registration.
+            </p>
+        </div>
 
-    <form method="POST" action="{{ route('warranty.lookup.store') }}" class="mt-6 space-y-4">
-        @csrf
-        <div>
-            <label class="mb-1 block text-sm font-medium">Warranty reference</label>
-            <input name="reference" value="{{ $reference }}" class="w-full rounded-lg border-slate-300" placeholder="KEL-WTY-2026-000001">
-        </div>
-        <div>
-            <label class="mb-1 block text-sm font-medium">Serial number</label>
-            <input name="serial_number" value="{{ $serial_number ?? request('serial') }}" class="w-full rounded-lg border-slate-300">
-            <p class="mt-1 text-xs text-slate-500">QR certificate links open this page with the reference or serial prefilled. Mobile verification is still required.</p>
-        </div>
-        <div>
-            <label class="mb-1 block text-sm font-medium">Registered mobile number</label>
-            <input name="mobile_number" value="{{ old('mobile_number') }}" required class="w-full rounded-lg border-slate-300" placeholder="07XXXXXXXX">
-        </div>
-        <button class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white">Search</button>
-    </form>
+        <form method="POST" action="{{ route('warranty.lookup.store') }}" class="space-y-4 px-6 py-6 sm:px-8">
+            @csrf
+            <div>
+                <label class="mb-1 block text-sm font-medium text-brand-ink">Warranty reference</label>
+                <input name="reference" value="{{ $reference }}"
+                       class="w-full rounded-lg border-gray-300 focus:border-brand focus:ring-brand"
+                       placeholder="KEL-WTY-2026-000001"
+                       autocomplete="off">
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-brand-ink">Serial number</label>
+                <input name="serial_number" value="{{ $serial_number ?? request('serial') }}"
+                       class="w-full rounded-lg border-gray-300 focus:border-brand focus:ring-brand"
+                       placeholder="Product serial"
+                       autocomplete="off">
+                <p class="mt-1 text-xs text-gray-500">Provide reference or serial (or both). QR links prefill these fields.</p>
+            </div>
+            <div>
+                <label class="mb-1 block text-sm font-medium text-brand-ink">Registered mobile number</label>
+                <input name="mobile_number" value="{{ old('mobile_number') }}" required
+                       class="w-full rounded-lg border-gray-300 focus:border-brand focus:ring-brand"
+                       placeholder="07XXXXXXXX"
+                       inputmode="tel"
+                       autocomplete="tel">
+                <p class="mt-1 text-xs text-gray-500">Required for privacy verification.</p>
+            </div>
+            <button class="btn-brand w-full py-3">Search warranty</button>
+        </form>
+    </div>
+
+    <p class="mt-6 text-center text-sm text-gray-500">
+        Don't have a warranty yet?
+        <a href="{{ route('register-warranty.create') }}" class="font-semibold text-brand hover:underline">Register here</a>
+    </p>
 </div>
 @endsection

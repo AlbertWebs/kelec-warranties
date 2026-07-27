@@ -13,11 +13,13 @@
 <div class="min-h-screen md:flex">
     <aside class="fixed inset-y-0 left-0 z-40 w-72 transform bg-brand-ink text-slate-100 transition md:static md:translate-x-0"
            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'">
-        <div class="flex h-16 items-center gap-2 border-b border-white/10 px-5">
-            <span class="inline-flex h-8 w-8 items-center justify-center rounded bg-brand text-xs font-bold text-white">KE</span>
+        <div class="flex h-16 items-center gap-2.5 border-b border-white/10 px-4">
+            <span class="inline-flex shrink-0 items-center">
+                <x-application-logo class="h-8 w-auto" />
+            </span>
             <div class="leading-tight">
-                <div class="text-sm font-bold text-white">K-Elec</div>
-                <div class="text-[11px] uppercase tracking-wide text-white/60">Admin</div>
+                <div class="text-[11px] font-semibold uppercase tracking-wide text-white/60">Warranties</div>
+                <div class="text-sm font-bold text-white">Admin</div>
             </div>
         </div>
         <nav class="space-y-1 p-4 text-sm">
@@ -37,6 +39,7 @@
                     ['admin.users.index', 'Users'],
                     ['admin.roles.index', 'Roles and Permissions'],
                     ['admin.audit-logs.index', 'Audit Logs'],
+                    ['admin.legal.edit', 'Legal Pages'],
                     ['admin.settings.edit', 'Settings'],
                 ];
             @endphp

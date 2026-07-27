@@ -12,6 +12,7 @@ use App\Models\PurchaseSource;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\WarrantyRule;
+use App\Support\LegalContentDefaults;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Permission;
@@ -274,8 +275,8 @@ class DatabaseSeeder extends Seeder
             ['allow_manual_verification', '1', 'warranty', 'boolean'],
             ['privacy_policy_url', url('/privacy-policy'), 'privacy', 'string'],
             ['warranty_terms_url', url('/warranty-terms'), 'privacy', 'string'],
-            ['privacy_policy_content', "K-Elec processes warranty registration data to validate purchases, activate warranties, and contact you about your registration.\n\nMarketing communication is optional and separate from warranty processing.", 'privacy', 'string'],
-            ['warranty_terms_content', "K-Elec warranties cover manufacturing defects for the configured duration from the warranty start date, subject to product terms and proof of purchase where required.", 'privacy', 'string'],
+            ['privacy_policy_content', LegalContentDefaults::privacyPolicy(), 'privacy', 'string'],
+            ['warranty_terms_content', LegalContentDefaults::warrantyTerms(), 'privacy', 'string'],
             ['odoo_enabled', '0', 'odoo', 'boolean'],
             ['odoo_mock_mode', '1', 'odoo', 'boolean'],
             ['odoo_timeout', '15', 'odoo', 'integer'],

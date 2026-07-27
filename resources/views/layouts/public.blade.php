@@ -9,31 +9,80 @@
     <link rel="icon" type="image/png" sizes="32x32" href="https://k-elec.co.ke/favicon/favicon-32x32.png">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-brand-soft text-brand-ink antialiased">
-    <div class="brand-accent-bar h-1 w-full"></div>
-    <header class="border-b border-gray-200 bg-white">
-        <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-            <a href="{{ route('home') }}" class="flex items-center gap-2">
-                <span class="inline-flex h-9 w-9 items-center justify-center rounded-md bg-brand text-sm font-bold text-white">KE</span>
-                <span class="leading-tight">
-                    <span class="block text-lg font-bold text-brand">K-Elec</span>
-                    <span class="block text-xs font-medium uppercase tracking-wide text-brand-navy">Warranties</span>
+<body class="flex min-h-screen flex-col bg-brand-soft text-brand-ink antialiased" x-data="{ mobileNavOpen: false }" @keydown.escape.window="mobileNavOpen = false">
+    <div class="brand-accent-bar h-1 w-full shrink-0"></div>
+    <header class="sticky top-0 z-50 shrink-0 border-b border-gray-200 bg-white/95 backdrop-blur">
+        <div class="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:py-3">
+            <a href="{{ route('home') }}" class="flex min-w-0 items-center gap-2.5">
+                <span class="inline-flex shrink-0 items-center">
+                    <x-application-logo class="h-8 w-auto sm:h-9" />
+                </span>
+                <span class="min-w-0 leading-tight">
+                    <span class="block truncate text-[11px] font-semibold uppercase tracking-wider text-brand-navy sm:text-xs">Warranties</span>
+                    <span class="hidden text-xs text-gray-500 sm:block">Register &amp; look up</span>
                 </span>
             </a>
-            <nav class="flex items-center gap-4 text-sm font-medium text-brand-ink">
-                <a href="{{ route('register-warranty.create') }}" class="hover:text-brand">Register</a>
-                <a href="{{ route('warranty.lookup') }}" class="hover:text-brand">Lookup</a>
-                <a href="{{ route('privacy-policy') }}" class="hover:text-brand">Privacy</a>
+
+            <nav class="hidden items-center gap-1 text-sm font-medium text-brand-ink md:flex">
+                <a href="{{ route('register-warranty.create') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Register</a>
+                <a href="{{ route('warranty.lookup') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Lookup</a>
+                <a href="{{ route('find-store') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Stores</a>
+                <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Main site</a>
+                <a href="{{ route('privacy-policy') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Privacy</a>
                 @auth
-                    <a href="{{ route('admin.dashboard') }}" class="rounded-md bg-brand-navy px-3 py-2 text-white hover:bg-brand-ink">Admin</a>
+                    <a href="{{ route('admin.dashboard') }}" class="ml-1 rounded-md bg-brand-navy px-3 py-2 text-white hover:bg-brand-ink">Admin</a>
                 @else
-                    <a href="{{ route('login') }}" class="btn-brand">Staff Login</a>
+                    <a href="{{ route('login') }}" class="btn-brand ml-1 !px-3 !py-2 text-sm">Staff Login</a>
+                @endauth
+            </nav>
+
+            <button type="button"
+                    class="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 text-brand-ink transition hover:border-brand hover:text-brand md:hidden"
+                    @click="mobileNavOpen = !mobileNavOpen"
+                    :aria-expanded="mobileNavOpen.toString()"
+                    aria-controls="mobile-nav"
+                    aria-label="Toggle menu">
+                <svg x-show="!mobileNavOpen" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+                <svg x-show="mobileNavOpen" x-cloak class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <div id="mobile-nav"
+             x-show="mobileNavOpen"
+             x-cloak
+             x-transition:enter="transition ease-out duration-150"
+             x-transition:enter-start="opacity-0 -translate-y-1"
+             x-transition:enter-end="opacity-100 translate-y-0"
+             x-transition:leave="transition ease-in duration-100"
+             x-transition:leave-start="opacity-100 translate-y-0"
+             x-transition:leave-end="opacity-0 -translate-y-1"
+             class="border-t border-gray-100 bg-white md:hidden"
+             @click.outside="mobileNavOpen = false">
+            <nav class="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 text-sm font-medium text-brand-ink">
+                <a href="{{ route('register-warranty.create') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Register warranty</a>
+                <a href="{{ route('warranty.lookup') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Lookup warranty</a>
+                <a href="{{ route('find-store') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">
+                    Find nearest store
+                    <span class="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">Soon</span>
+                </a>
+                <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand">Main website ↗</a>
+                <a href="{{ route('privacy-policy') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Privacy Policy</a>
+                <a href="{{ route('warranty-terms') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Warranty Terms</a>
+                <div class="my-1 border-t border-gray-100"></div>
+                @auth
+                    <a href="{{ route('admin.dashboard') }}" class="rounded-lg bg-brand-navy px-3 py-3 text-center text-white" @click="mobileNavOpen = false">Admin dashboard</a>
+                @else
+                    <a href="{{ route('login') }}" class="btn-brand text-center" @click="mobileNavOpen = false">Staff Login</a>
                 @endauth
             </nav>
         </div>
     </header>
 
-    <main class="mx-auto max-w-6xl px-4 py-8">
+    <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
         @if (session('success'))
             <div class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-green-800">{{ session('success') }}</div>
         @endif
@@ -56,20 +105,82 @@
         @yield('content')
     </main>
 
-    <footer class="border-t border-gray-200 bg-white">
-        <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-sm text-gray-500 md:flex-row md:items-center md:justify-between">
-            <div>
-                <span class="font-semibold text-brand-navy">K-Elec</span>
-                <span> · Korean Tech, Kenyan Trust</span>
-                <div class="mt-1">&copy; {{ date('Y') }} K-Elec. All rights reserved.</div>
-            </div>
-            <div class="flex flex-col gap-1 md:items-end">
-                <a href="tel:+254716052243" class="hover:text-brand">0716 052 243</a>
-                <div class="flex gap-4">
-                    <a href="{{ route('privacy-policy') }}" class="hover:text-brand">Privacy Policy</a>
-                    <a href="{{ route('warranty-terms') }}" class="hover:text-brand">Warranty Terms</a>
-                    <a href="https://k-elec.co.ke/" class="hover:text-brand" target="_blank" rel="noopener">k-elec.co.ke</a>
+    <footer class="relative mt-auto shrink-0 overflow-hidden bg-brand-ink text-white">
+        <div class="brand-accent-bar h-1 w-full"></div>
+        <div class="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-brand/20 blur-3xl"></div>
+        <div class="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-brand-navy/40 blur-3xl"></div>
+
+        <div class="relative mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-3">
+            <div class="md:col-span-1">
+                <div class="flex items-center gap-3">
+                    <span class="inline-flex shrink-0 items-center">
+                        <x-application-logo class="h-9 w-auto" />
+                    </span>
+                    <div class="leading-tight">
+                        <div class="text-sm font-semibold uppercase tracking-wider text-white/70">Warranties</div>
+                        <div class="text-xs text-white/45">Portal</div>
+                    </div>
                 </div>
+                <p class="mt-4 text-sm leading-relaxed text-white/70">
+                    Korean Tech, Kenyan Trust — register and look up your appliance warranty in minutes.
+                </p>
+                <div class="mt-5 flex flex-wrap gap-3">
+                    <a href="{{ route('register-warranty.create') }}"
+                       class="footer-cta inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-dark hover:shadow-lg hover:shadow-brand/25">
+                        Register a warranty
+                        <span aria-hidden="true">→</span>
+                    </a>
+                    <a href="https://k-elec.co.ke/" target="_blank" rel="noopener"
+                       class="inline-flex items-center gap-2 rounded-lg border border-white/20 px-4 py-2.5 text-sm font-semibold text-white transition hover:border-white/40 hover:bg-white/5">
+                        Main website
+                        <span aria-hidden="true" class="text-white/60">↗</span>
+                    </a>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-white/50">Quick links</h3>
+                <ul class="mt-3 space-y-2 text-sm">
+                    <li><a href="{{ route('register-warranty.create') }}" class="footer-link">Register warranty</a></li>
+                    <li><a href="{{ route('warranty.lookup') }}" class="footer-link">Lookup warranty</a></li>
+                    <li>
+                        <a href="{{ route('find-store') }}" class="footer-link inline-flex items-center gap-2">
+                            Find nearest store
+                            <span class="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">Coming soon</span>
+                        </a>
+                    </li>
+                    <li><a href="https://k-elec.co.ke/" class="footer-link" target="_blank" rel="noopener">Main website (k-elec.co.ke)</a></li>
+                    <li><a href="{{ route('privacy-policy') }}" class="footer-link">Privacy Policy</a></li>
+                    <li><a href="{{ route('warranty-terms') }}" class="footer-link">Warranty Terms</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-white/50">Support</h3>
+                <ul class="mt-3 space-y-3 text-sm text-white/80">
+                    <li>
+                        <div class="text-white/50">Phone</div>
+                        <a href="tel:+254716052243" class="footer-link text-base font-medium text-white">0716 052 243</a>
+                    </li>
+                    <li>
+                        <div class="text-white/50">Brand shops</div>
+                        <div>Sarin · CBD · Westlands</div>
+                    </li>
+                    <li>
+                        <div class="text-white/50">Hours</div>
+                        <div>Mon–Sat, 9AM–6PM</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="relative border-t border-white/10">
+            <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+                <span>&copy; {{ date('Y') }} K-Elec. All rights reserved.</span>
+                <span class="footer-pulse inline-flex items-center gap-2">
+                    <span class="h-1.5 w-1.5 rounded-full bg-brand"></span>
+                    Secure warranty portal
+                </span>
             </div>
         </div>
     </footer>

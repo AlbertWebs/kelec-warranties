@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PurchaseSourceController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\LegalContentController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WarrantyController;
@@ -30,6 +31,7 @@ Route::get('/', function () {
 
 Route::get('/privacy-policy', [ContentPageController::class, 'privacy'])->name('privacy-policy');
 Route::get('/warranty-terms', [ContentPageController::class, 'terms'])->name('warranty-terms');
+Route::view('/find-store', 'public.pages.find-store')->name('find-store');
 
 Route::middleware('throttle:warranty-registration')->group(function () {
     Route::get('/register-warranty', [WarrantyRegistrationController::class, 'create'])->name('register-warranty.create');
@@ -103,6 +105,8 @@ Route::middleware(['auth', 'verified', 'active', 'admin'])->prefix('admin')->nam
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::get('/legal-pages', [LegalContentController::class, 'edit'])->name('legal.edit');
+    Route::put('/legal-pages', [LegalContentController::class, 'update'])->name('legal.update');
 
     Route::get('/documents/{document}/download', DocumentDownloadController::class)->name('documents.download');
 });

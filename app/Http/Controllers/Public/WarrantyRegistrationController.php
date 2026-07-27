@@ -72,8 +72,7 @@ class WarrantyRegistrationController extends Controller
         $request->session()->forget(['registration_prefill', 'serial_result']);
 
         return redirect()
-            ->route('register-warranty.success', $warranty->reference)
-            ->with('success', 'Your warranty registration has been submitted successfully.');
+            ->route('register-warranty.success', $warranty->reference);
     }
 
     public function success(string $reference): View
