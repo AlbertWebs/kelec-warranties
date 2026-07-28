@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\PurchaseSource;
 use App\Services\WarrantyRegistrationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -55,14 +56,15 @@ class WarrantyRegistrationController extends Controller
             'email' => $result['odoo']['customer']['email'] ?? null,
         ];
 
+        $prefill['product_id'] = $this->resolveLocalProductIdFromPrefill($prefill, $result);
+
         return redirect()
             ->route('register-warranty.create')
             ->with('serial_result', $result)
-            ->with('registration_prefill', $prefill)
-            ->with('status', $result['message']);
+            ->with('registration_prefill', $prefill);
     }
 
-    public function store(WarrantyRegistrationRequest $request): RedirectResponse
+    public function store(WarrantyRegistrationRequest $request): RedirectResponse|JsonResponse
     {
         $warranty = $this->registrationService->register(
             $request->validated(),
@@ -70,6 +72,17 @@ class WarrantyRegistrationController extends Controller
         );
 
         $request->session()->forget(['registration_prefill', 'serial_result']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Thank you. Your warranty registration has been submitted successfully.',
+                'reference' => $warranty->reference,
+                'next_url' => route('register-warranty.success', $warranty->reference),
+                'lookup_url' => route('warranty.lookup', ['reference' => $warranty->reference]),
+                'certificate_url' => route('warranty.certificate', $warranty->reference),
+            ]);
+        }
 
         return redirect()
             ->route('register-warranty.success', $warranty->reference);
@@ -82,5 +95,40 @@ class WarrantyRegistrationController extends Controller
             ->firstOrFail();
 
         return view('public.register.success', compact('warranty'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $prefill
+     * @param  array<string, mixed>  $result
+     */
+    protected function resolveLocalProductIdFromPrefill(array $prefill, array $result): ?int
+    {
+        $candidate = $prefill['product_id'] ?? null;
+        if ($candidate && Product::query()->whereKey($candidate)->exists()) {
+            return (int) $candidate;
+        }
+
+        $odooProduct = $result['odoo']['product'] ?? [];
+        $odooProductId = $odooProduct['odoo_product_id'] ?? null;
+
+        $query = Product::query();
+        if ($odooProductId) {
+            $matched = $query->where('odoo_product_id', (string) $odooProductId)
+                ->orWhere('odoo_id', (string) $odooProductId)
+                ->first();
+            if ($matched) {
+                return (int) $matched->id;
+            }
+        }
+
+        $name = $prefill['product_name'] ?? null;
+        if ($name) {
+            $matched = Product::query()->where('name', $name)->first();
+            if ($matched) {
+                return (int) $matched->id;
+            }
+        }
+
+        return null;
     }
 }

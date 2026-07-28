@@ -23,6 +23,20 @@
         background-color: #991B1B;
     }
 
+    .mobile-login-pill {
+        @apply inline-flex items-center rounded-full bg-brand px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-white;
+    }
+
+    .mobile-login-pill:hover {
+        background-color: #991B1B;
+    }
+
+    .mobile-context-strip {
+        background: linear-gradient(90deg, rgba(220, 38, 38, 0.12) 0%, rgba(220, 38, 38, 0.03) 100%);
+        border-top: 1px solid rgba(220, 38, 38, 0.12);
+        border-bottom: 1px solid rgba(220, 38, 38, 0.12);
+    }
+
     .brand-accent-bar {
         background: linear-gradient(90deg, #DC2626 0%, #991B1B 100%);
     }

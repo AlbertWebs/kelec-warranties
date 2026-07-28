@@ -56,6 +56,9 @@ class NotificationDispatcher
         $subject = strtr($template?->subject ?? 'K-Elec Warranty Update', $replacements);
         $channel = $template?->channel ?? NotificationChannel::Both;
 
+        $emailBody = $this->ensureLookupDetails($emailBody, $replacements['{{lookup_link}}'], false);
+        $smsBody = $this->ensureLookupDetails($smsBody, $replacements['{{lookup_link}}'], true);
+
         if (in_array($channel, [NotificationChannel::Email, NotificationChannel::Both], true) && $customer->email) {
             $this->sendEmail($warranty, $customer, $type, $customer->email, $subject, $emailBody);
         }
@@ -171,7 +174,7 @@ class NotificationDispatcher
     protected function defaultEmailBody(string $type): string
     {
         return match ($type) {
-            'warranty_pending_verification' => "Hello {{customer_name}},\n\nYour warranty registration {{warranty_reference}} for {{product_name}} ({{serial_number}}) has been received and is pending verification.\n\nSupport: {{support_phone}} / {{support_email}}",
+            'warranty_pending_verification' => "Hello {{customer_name}},\n\nYour warranty registration {{warranty_reference}} for {{product_name}} ({{serial_number}}) has been received and is pending verification.\nLookup: {{lookup_link}} (use your reference and registered mobile number)\n\nSupport: {{support_phone}} / {{support_email}}",
             'warranty_rejected' => "Hello {{customer_name}},\n\nYour warranty registration {{warranty_reference}} could not be approved. Please contact support for assistance.\n\nSupport: {{support_phone}} / {{support_email}}",
             'pos_warranty_registered' => "Hello {{customer_name}},\n\nYour Brand Shop purchase has been registered automatically.\nWarranty {{warranty_reference}} for {{product_name}} ({{serial_number}}) is {{warranty_status}}.\nExpiry: {{warranty_expiry_date}}\nLookup: {{lookup_link}}",
             'customer_details_completion' => "Hello {{customer_name}},\n\nYour K-Elec warranty {{warranty_reference}} was created from a Brand Shop purchase. Please complete your contact details using the secure link sent by SMS/email.",
@@ -182,11 +185,24 @@ class NotificationDispatcher
     protected function defaultSmsBody(string $type): string
     {
         return match ($type) {
-            'warranty_pending_verification' => 'K-Elec: Warranty {{warranty_reference}} received and pending verification.',
-            'warranty_rejected' => 'K-Elec: Warranty {{warranty_reference}} was not approved. Contact support.',
+            'warranty_pending_verification' => 'K-Elec: Warranty {{warranty_reference}} received and pending verification. Lookup: {{lookup_link}} using your registered mobile.',
+            'warranty_rejected' => 'K-Elec: Warranty {{warranty_reference}} was not approved. Lookup: {{lookup_link}} or contact support.',
             'pos_warranty_registered' => 'K-Elec: Brand Shop warranty {{warranty_reference}} is active. Expiry {{warranty_expiry_date}}.',
             'customer_details_completion' => 'K-Elec: Complete your warranty {{warranty_reference}} details using the secure link provided.',
             default => 'K-Elec: Warranty {{warranty_reference}} for {{product_name}} is {{warranty_status}}. Expiry {{warranty_expiry_date}}. Lookup {{lookup_link}}',
         };
+    }
+
+    protected function ensureLookupDetails(string $message, string $lookupLink, bool $sms): string
+    {
+        if (str_contains($message, $lookupLink) || str_contains(strtolower($message), 'lookup')) {
+            return $message;
+        }
+
+        if ($sms) {
+            return rtrim($message).' Lookup: '.$lookupLink.' (use your registered mobile).';
+        }
+
+        return rtrim($message)."\nLookup: {$lookupLink} (use your warranty reference and registered mobile number).";
     }
 }

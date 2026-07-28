@@ -48,6 +48,7 @@
                     ],
                     'Operations' => [
                         ['admin.odoo.index', 'Odoo sync', 'odoo'],
+                        ['admin.odoo.products.index', 'Odoo product sync', 'odoo'],
                         ['admin.notifications.index', 'Notifications', 'notifications'],
                         ['admin.reports.index', 'Reports', 'reports'],
                     ],

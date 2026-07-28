@@ -211,4 +211,33 @@ class WarrantyRegistrationTest extends TestCase
             'serial_number' => 'EXISTINGACTIVE',
         ])->assertRedirect(route('warranty.lookup'));
     }
+
+    public function test_registration_uses_local_serial_cache_before_odoo(): void
+    {
+        $settings = app(SettingsService::class);
+        $settings->set('odoo_mock_mode', false, 'odoo', 'boolean');
+        $settings->set('odoo_enabled', true, 'odoo', 'boolean');
+
+        $source = PurchaseSource::where('code', 'brand_shop')->firstOrFail();
+        $product = Product::firstOrFail();
+        $product->update([
+            'serial_number' => 'LOCALCACHE001',
+            'default_code' => 'LOCALCACHE001',
+        ]);
+
+        $this->post(route('register-warranty.store'), [
+            'serial_number' => 'LOCALCACHE001',
+            'full_name' => 'Local Cache Customer',
+            'mobile_number' => '0712999000',
+            'purchase_source_id' => $source->id,
+            'product_id' => $product->id,
+            'purchase_date' => now()->subDays(2)->toDateString(),
+            'privacy_accepted' => '1',
+        ])->assertRedirect();
+
+        $warranty = Warranty::latest()->firstOrFail();
+        $this->assertEquals(WarrantyStatus::Active, $warranty->status);
+        $this->assertTrue($warranty->odoo_validated);
+        $this->assertEquals('Serial number validated successfully.', (string) $warranty->odoo_validation_message);
+    }
 }

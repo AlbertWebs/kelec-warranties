@@ -39,5 +39,9 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('serial-check', function (Request $request) {
             return Limit::perMinute(20)->by($request->ip());
         });
+
+        RateLimiter::for('product-lookup-api', function (Request $request) {
+            return Limit::perMinute(30)->by($request->ip());
+        });
     }
 }

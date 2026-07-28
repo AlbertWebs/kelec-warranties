@@ -18,7 +18,10 @@ class ProductController extends Controller
         $products = Product::with('category')
             ->when($request->filled('q'), fn ($q) => $q->where('name', 'like', '%'.$request->q.'%')
                 ->orWhere('sku', 'like', '%'.$request->q.'%')
-                ->orWhere('model', 'like', '%'.$request->q.'%'))
+                ->orWhere('model', 'like', '%'.$request->q.'%')
+                ->orWhere('default_code', 'like', '%'.$request->q.'%')
+                ->orWhere('barcode', 'like', '%'.$request->q.'%')
+                ->orWhere('serial_number', 'like', '%'.$request->q.'%'))
             ->latest()
             ->paginate(20)
             ->withQueryString();
@@ -79,6 +82,9 @@ class ProductController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'product_code' => ['nullable', 'string', 'max:100'],
             'sku' => ['nullable', 'string', 'max:100', 'unique:products,sku,'.($ignoreId ?? 'NULL')],
+            'default_code' => ['nullable', 'string', 'max:100', 'unique:products,default_code,'.($ignoreId ?? 'NULL')],
+            'barcode' => ['nullable', 'string', 'max:120', 'unique:products,barcode,'.($ignoreId ?? 'NULL')],
+            'serial_number' => ['nullable', 'string', 'max:120'],
             'model' => ['nullable', 'string', 'max:100'],
             'brand' => ['nullable', 'string', 'max:100'],
             'default_warranty_months' => ['nullable', 'integer', 'min:1', 'max:120'],

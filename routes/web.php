@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\DemoDataController;
 use App\Http\Controllers\Admin\DocumentDownloadController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\OdooController;
+use App\Http\Controllers\Admin\OdooProductSyncController;
 use App\Http\Controllers\Admin\ProductCategoryController;
 use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PurchaseSourceController;
@@ -33,6 +34,7 @@ Route::get('/', function () {
 
 Route::get('/privacy-policy', [ContentPageController::class, 'privacy'])->name('privacy-policy');
 Route::get('/warranty-terms', [ContentPageController::class, 'terms'])->name('warranty-terms');
+Route::view('/product-lookup', 'public.product-lookup.index')->name('product.lookup');
 Route::view('/find-store', 'public.pages.find-store')->name('find-store');
 
 Route::middleware('throttle:warranty-registration')->group(function () {
@@ -97,6 +99,10 @@ Route::middleware(['auth', 'verified', 'active', 'admin'])->prefix('admin')->nam
     Route::get('/odoo', [OdooController::class, 'index'])->name('odoo.index');
     Route::post('/odoo/test-connection', [OdooController::class, 'testConnection'])->name('odoo.test');
     Route::post('/odoo/retry-failures', [OdooController::class, 'retryFailures'])->name('odoo.retry');
+    Route::get('/odoo-products', [OdooProductSyncController::class, 'index'])->name('odoo.products.index');
+    Route::post('/odoo-products/sync', [OdooProductSyncController::class, 'sync'])->name('odoo.products.sync');
+    Route::post('/odoo-products/retry-pending', [OdooProductSyncController::class, 'retryPending'])->name('odoo.products.retry-pending');
+    Route::post('/odoo-products/retry/{failure}', [OdooProductSyncController::class, 'retryFailure'])->name('odoo.products.retry-failure');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');

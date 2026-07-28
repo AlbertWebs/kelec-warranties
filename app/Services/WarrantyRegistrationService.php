@@ -49,6 +49,27 @@ class WarrantyRegistrationService
             ];
         }
 
+        $localProduct = $this->findLocalProductBySerial($serialNumber);
+        if ($localProduct) {
+            return [
+                'status' => 'found_local',
+                'message' => 'Serial number validated successfully.',
+                'odoo' => [
+                    'source' => 'local',
+                    'found' => true,
+                    'product' => [
+                        'id' => $localProduct->id,
+                        'odoo_product_id' => $localProduct->odoo_product_id ?: $localProduct->odoo_id,
+                        'name' => $localProduct->name,
+                        'model' => $localProduct->model,
+                        'category_id' => $localProduct->product_category_id,
+                    ],
+                    'sale' => [],
+                    'customer' => [],
+                ],
+            ];
+        }
+
         try {
             $odoo = $this->odooProductService->lookupBySerial($serialNumber);
 
@@ -97,7 +118,7 @@ class WarrantyRegistrationService
 
             $serialCheck = $this->checkSerial($serialNumber);
             $odoo = $serialCheck['odoo'] ?? [];
-            $serialFound = ($serialCheck['status'] ?? null) === 'found';
+            $serialFound = in_array(($serialCheck['status'] ?? null), ['found', 'found_local'], true);
             $odooUnavailable = ($serialCheck['status'] ?? null) === 'odoo_unavailable';
 
             $product = null;
@@ -237,5 +258,18 @@ class WarrantyRegistrationService
             'consent_type' => ConsentType::Marketing,
             'granted' => $marketing,
         ]);
+    }
+
+    protected function findLocalProductBySerial(string $serialNumber): ?Product
+    {
+        return Product::query()
+            ->where('serial_number', $serialNumber)
+            ->orWhere('barcode', $serialNumber)
+            ->orWhere('default_code', $serialNumber)
+            ->orWhere('sku', $serialNumber)
+            ->orWhere('product_code', $serialNumber)
+            ->orWhere('odoo_id', $serialNumber)
+            ->orWhere('odoo_product_id', $serialNumber)
+            ->first();
     }
 }
