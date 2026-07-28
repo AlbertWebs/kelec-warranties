@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\LegalContentController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\SmsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\WarrantyController;
 use App\Http\Controllers\ProfileController;
@@ -105,6 +106,13 @@ Route::middleware(['auth', 'verified', 'active', 'admin'])->prefix('admin')->nam
     Route::post('/odoo-products/retry/{failure}', [OdooProductSyncController::class, 'retryFailure'])->name('odoo.products.retry-failure');
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+
+    Route::get('/sms', [SmsController::class, 'index'])->name('sms.index');
+    Route::put('/sms/settings', [SmsController::class, 'updateSettings'])->name('sms.settings');
+    Route::post('/sms/refresh-balance', [SmsController::class, 'refreshBalance'])->name('sms.refresh-balance');
+    Route::post('/sms/test', [SmsController::class, 'sendTest'])->name('sms.test');
+    Route::post('/sms/{smsLog}/delivery-report', [SmsController::class, 'deliveryReport'])->name('sms.delivery-report');
+
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');

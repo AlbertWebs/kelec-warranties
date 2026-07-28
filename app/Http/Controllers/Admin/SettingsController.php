@@ -47,15 +47,6 @@ class SettingsController extends Controller
             'odoo_username' => ['nullable', 'string', 'max:150'],
             'odoo_api_key' => ['nullable', 'string', 'max:255'],
             'odoo_timeout' => ['nullable', 'integer', 'min:5', 'max:120'],
-            'sms_enabled' => ['sometimes', 'boolean'],
-            'sms_endpoint' => ['nullable', 'url', 'max:255'],
-            'sms_http_method' => ['nullable', 'in:GET,POST'],
-            'sms_api_key' => ['nullable', 'string', 'max:255'],
-            'sms_sender_id' => ['nullable', 'string', 'max:50'],
-            'sms_auth_header' => ['nullable', 'string', 'max:100'],
-            'sms_phone_param' => ['nullable', 'string', 'max:50'],
-            'sms_message_param' => ['nullable', 'string', 'max:50'],
-            'sms_timeout' => ['nullable', 'integer', 'min:5', 'max:120'],
             'mail_from_address' => ['nullable', 'email', 'max:150'],
             'mail_from_name' => ['nullable', 'string', 'max:150'],
         ]);
@@ -64,7 +55,6 @@ class SettingsController extends Controller
             'allow_manual_verification',
             'odoo_enabled',
             'odoo_mock_mode',
-            'sms_enabled',
         ];
 
         foreach ($bools as $boolKey) {
@@ -74,15 +64,14 @@ class SettingsController extends Controller
         foreach ($data as $key => $value) {
             $group = match (true) {
                 str_starts_with($key, 'odoo_') => 'odoo',
-                str_starts_with($key, 'sms_') => 'sms',
                 str_starts_with($key, 'mail_') => 'email',
                 str_contains($key, 'privacy') || str_contains($key, 'warranty_terms') => 'privacy',
                 in_array($key, ['default_warranty_months', 'registration_grace_days', 'warranty_reference_prefix', 'allow_manual_verification'], true) => 'warranty',
                 default => 'general',
             };
 
-            $type = in_array($key, $bools, true) ? 'boolean' : (in_array($key, ['default_warranty_months', 'registration_grace_days', 'odoo_timeout', 'sms_timeout'], true) ? 'integer' : 'string');
-            $encrypt = in_array($key, ['odoo_api_key', 'sms_api_key'], true);
+            $type = in_array($key, $bools, true) ? 'boolean' : (in_array($key, ['default_warranty_months', 'registration_grace_days', 'odoo_timeout'], true) ? 'integer' : 'string');
+            $encrypt = in_array($key, ['odoo_api_key'], true);
 
             if ($encrypt && ($value === null || $value === '')) {
                 continue;

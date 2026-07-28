@@ -138,7 +138,7 @@ class NotificationDispatcher
             'retry_count' => 0,
         ]);
 
-        $result = $this->smsService->send($recipient, $body);
+        $result = $this->smsService->send($recipient, $body, $type);
         $retryCount = (int) ($log->retry_count ?? 0);
 
         $log->update([

@@ -81,10 +81,10 @@ See `.env.example` for:
 - Database
 - Queue (`QUEUE_CONNECTION=database`)
 - AWS SES SMTP mail settings
-- SMS endpoint placeholders
+- SMS Advanta credentials / partner ID / sender ID
 - Odoo API placeholders and mock mode flags
 
-Sensitive Odoo/SMS secrets can also be stored encrypted through **Admin → Settings**.
+Sensitive Odoo secrets can also be stored encrypted through **Admin → Settings**. SMS secrets are managed under **Admin → SMS**.
 
 ## Queue and scheduler
 
@@ -122,19 +122,22 @@ MAIL_FROM_ADDRESS=warranties@yourdomain.com
 MAIL_FROM_NAME="K-Elec Warranties"
 ```
 
-## SMS endpoint
+## SMS (AdvantaSMS)
 
-Configure in Admin Settings or environment-equivalent settings:
+Configure under **Admin → SMS** (API settings tab) or via settings keys:
 
-- Endpoint URL
-- HTTP method
-- API key
-- Sender ID
-- Auth header
-- Phone/message parameter names
-- Timeout / enabled flag
+- `sms_enabled` — live sends when true; otherwise mock/log only
+- `sms_api_key` — Advanta API key (stored encrypted)
+- `sms_partner_id` — Advanta Partner ID
+- `sms_sender_id` — approved sender ID / shortcode
+- `sms_base_url` — default `https://quicksms.advantasms.com/api/services`
+- `sms_timeout` — HTTP timeout in seconds
+
+System-wide helper: `send_sms($mobile, $message, $context = null)`.
 
 When `sms_enabled` is false, SMS is logged in mock mode for safe local testing.
+
+Docs: https://www.advantasms.com/bulksms-api
 
 ## Brand Shop POS automation
 

@@ -71,7 +71,7 @@
         </nav>
     </div>
 
-    <form method="POST" action="{{ route('admin.settings.update') }}" class="pb-24">
+    <form method="POST" action="{{ route('admin.settings.update') }}" class="pb-24" x-show="tab !== 'sms'">
         @csrf
         @method('PUT')
 
@@ -263,75 +263,6 @@
             </div>
         </section>
 
-        {{-- SMS --}}
-        <section x-show="tab === 'sms'" x-cloak class="space-y-4">
-            <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-                <div class="flex items-start gap-3">
-                    <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                        </svg>
-                    </span>
-                    <div>
-                        <h2 class="text-base font-semibold text-brand-ink">SMS gateway</h2>
-                        <p class="mt-0.5 text-sm text-slate-500">Customer notifications for status changes and lookups.</p>
-                    </div>
-                </div>
-
-                <label class="mt-5 flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-                    <input type="checkbox" name="sms_enabled" value="1" @checked($smsOn) class="mt-0.5 rounded border-slate-300 text-brand focus:ring-brand">
-                    <span>
-                        <span class="block text-sm font-semibold text-brand-ink">Enable SMS</span>
-                        <span class="mt-0.5 block text-sm text-slate-500">Send SMS through the configured HTTP provider.</span>
-                    </span>
-                </label>
-
-                <div class="mt-5 grid gap-4 sm:grid-cols-2">
-                    <div class="auth-field sm:col-span-2">
-                        <label class="auth-label" for="sms_endpoint">Endpoint URL</label>
-                        <input id="sms_endpoint" type="url" name="sms_endpoint" value="{{ $s('sms_endpoint') }}" class="auth-input" placeholder="https://…">
-                    </div>
-                    <div class="auth-field">
-                        <label class="auth-label" for="sms_http_method">HTTP method</label>
-                        <select id="sms_http_method" name="sms_http_method" class="auth-input">
-                            <option value="POST" @selected($s('sms_http_method', 'POST') === 'POST')>POST</option>
-                            <option value="GET" @selected($s('sms_http_method', 'POST') === 'GET')>GET</option>
-                        </select>
-                    </div>
-                    <div class="auth-field">
-                        <label class="auth-label" for="sms_sender_id">Sender ID</label>
-                        <input id="sms_sender_id" name="sms_sender_id" value="{{ $s('sms_sender_id') }}" class="auth-input">
-                    </div>
-                    <div class="auth-field">
-                        <label class="auth-label" for="sms_api_key">API key</label>
-                        <div class="relative">
-                            <input id="sms_api_key" :type="showSmsKey ? 'text' : 'password'" name="sms_api_key" value="" class="auth-input pr-10" placeholder="Leave blank to keep current" autocomplete="new-password">
-                            <button type="button" class="absolute inset-y-0 right-0 px-3 text-slate-400 hover:text-brand-ink" @click="showSmsKey = !showSmsKey">
-                                <svg x-show="!showSmsKey" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                <svg x-show="showSmsKey" x-cloak class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="auth-field">
-                        <label class="auth-label" for="sms_timeout">Timeout (seconds)</label>
-                        <input id="sms_timeout" type="number" min="5" max="120" name="sms_timeout" value="{{ $s('sms_timeout', 15) }}" class="auth-input">
-                    </div>
-                    <div class="auth-field">
-                        <label class="auth-label" for="sms_auth_header">Auth header</label>
-                        <input id="sms_auth_header" name="sms_auth_header" value="{{ $s('sms_auth_header', 'Authorization') }}" class="auth-input">
-                    </div>
-                    <div class="auth-field">
-                        <label class="auth-label" for="sms_phone_param">Phone param</label>
-                        <input id="sms_phone_param" name="sms_phone_param" value="{{ $s('sms_phone_param', 'to') }}" class="auth-input">
-                    </div>
-                    <div class="auth-field">
-                        <label class="auth-label" for="sms_message_param">Message param</label>
-                        <input id="sms_message_param" name="sms_message_param" value="{{ $s('sms_message_param', 'message') }}" class="auth-input">
-                    </div>
-                </div>
-            </div>
-        </section>
-
         {{-- Email --}}
         <section x-show="tab === 'email'" x-cloak class="space-y-4">
             <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -380,5 +311,29 @@
             </div>
         </div>
     </form>
+
+    {{-- SMS (managed in dedicated admin segment) --}}
+    <section x-show="tab === 'sms'" x-cloak class="space-y-4 pb-24">
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div class="flex items-start gap-3">
+                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                    </svg>
+                </span>
+                <div>
+                    <h2 class="text-base font-semibold text-brand-ink">SMS moved</h2>
+                    <p class="mt-0.5 text-sm text-slate-500">
+                        AdvantaSMS credentials, balance, logs, and test sends now live under Operations → SMS.
+                    </p>
+                </div>
+            </div>
+            <div class="mt-5">
+                <a href="{{ route('admin.sms.index', ['tab' => 'settings']) }}" class="inline-flex rounded-lg bg-brand-navy px-3.5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-ink">
+                    Open SMS settings
+                </a>
+            </div>
+        </div>
+    </section>
 </div>
 @endsection
