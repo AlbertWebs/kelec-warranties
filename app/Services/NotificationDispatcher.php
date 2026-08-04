@@ -16,6 +16,19 @@ use Illuminate\Support\Str;
 
 class NotificationDispatcher
 {
+    /**
+     * SMS is billable — only these customer-facing events warrant a text.
+     * Pending portal confirmations and marketing prompts use email (or on-screen) instead.
+     */
+    public const SMS_NECESSARY_TYPES = [
+        'warranty_activated',
+        'warranty_rejected',
+        'pos_warranty_registered',
+        'customer_details_completion',
+        'warranty_lookup',
+        'admin_test',
+    ];
+
     public function __construct(
         protected SettingsService $settingsService,
         protected SmsService $smsService,
@@ -33,7 +46,7 @@ class NotificationDispatcher
         $this->sendNow($warranty, $type);
     }
 
-    public function sendNow(Warranty $warranty, string $type): void
+    public function sendNow(Warranty $warranty, string $type, bool $forceSms = false): void
     {
         $template = NotificationTemplate::query()->where('key', $type)->where('is_active', true)->first();
         $customer = $warranty->customer;
@@ -63,7 +76,11 @@ class NotificationDispatcher
             $this->sendEmail($warranty, $customer, $type, $customer->email, $subject, $emailBody);
         }
 
-        if (in_array($channel, [NotificationChannel::Sms, NotificationChannel::Both], true) && $customer->mobile_normalized) {
+        if (
+            in_array($channel, [NotificationChannel::Sms, NotificationChannel::Both], true)
+            && $customer->mobile_normalized
+            && $this->shouldSendSms($type, $warranty, $forceSms)
+        ) {
             $this->sendSms($warranty, $customer, $type, $customer->mobile_normalized, $smsBody);
         }
     }
@@ -75,20 +92,50 @@ class NotificationDispatcher
         string $subject,
         string $emailBody,
         string $smsBody,
+        bool $allowSms = true,
     ): void {
         if ($customer->email) {
             $this->sendEmail($warranty, $customer, $type, $customer->email, $subject, $emailBody);
         }
 
-        if ($customer->mobile_normalized) {
+        if ($allowSms && $customer->mobile_normalized && $this->shouldSendSms($type, $warranty)) {
             $this->sendSms($warranty, $customer, $type, $customer->mobile_normalized, $smsBody);
         }
     }
 
     public function resend(Warranty $warranty, string $type = 'warranty_activated'): void
     {
-        $this->sendWarrantyNotification($warranty, $type, false);
+        $this->sendNow($warranty, $type, forceSms: true);
         $this->auditLogger->log('notification_resent', $warranty, null, ['type' => $type]);
+    }
+
+    public function isSmsNecessary(string $type): bool
+    {
+        return in_array($type, self::SMS_NECESSARY_TYPES, true);
+    }
+
+    protected function shouldSendSms(string $type, ?Warranty $warranty, bool $force = false): bool
+    {
+        if (! $this->isSmsNecessary($type)) {
+            return false;
+        }
+
+        if ($force || $warranty === null) {
+            return true;
+        }
+
+        return ! $this->alreadySentSms($warranty, $type);
+    }
+
+    protected function alreadySentSms(Warranty $warranty, string $type): bool
+    {
+        return NotificationLog::query()
+            ->where('warranty_id', $warranty->id)
+            ->where('notification_type', $type)
+            ->where('channel', NotificationChannel::Sms)
+            ->where('status', 'sent')
+            ->where('created_at', '>=', now()->subDay())
+            ->exists();
     }
 
     protected function sendEmail(?Warranty $warranty, Customer $customer, string $type, string $recipient, string $subject, string $body): void

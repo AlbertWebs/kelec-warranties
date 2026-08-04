@@ -201,13 +201,15 @@ class PosWarrantyImportService
         $token = PublicAccessToken::issue('marketing_consent', $customer, $warranty, 30);
         $link = url('/consent/'.$token->token);
 
+        // Marketing preference is optional — email only; do not spend SMS credits.
         $this->notificationDispatcher->sendCustomMessage(
             $customer,
             $warranty,
             'consent_request',
             'K-Elec marketing preference',
             "Hello {$customer->full_name},\n\nWould you like to receive marketing updates from K-Elec? Manage your preference here (optional):\n{$link}\n\nYour warranty remains active regardless of this choice.",
-            "K-Elec: Optional marketing preference link {$link}"
+            "K-Elec: Optional marketing preference link {$link}",
+            allowSms: false,
         );
 
         return $token;
