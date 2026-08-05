@@ -11,9 +11,13 @@
     <meta property="og:description" content="@yield('og_description', trim($__env->yieldContent('meta_description', 'K-Elec warranty portal for appliance warranty registration, tracking, lookup, and certificate downloads in Kenya.')))">
     <meta property="og:type" content="website">
     <meta property="og:url" content="@yield('canonical_url', url()->current())">
-    <meta name="twitter:card" content="summary">
+    <meta property="og:image" content="@yield('og_image', 'https://k-elec.co.ke/storage/brand-shops/FyNQsy123XOFdAiBOCzjzasevNe2bg292ToKAcyd.jpg')">
+    <meta property="og:image:alt" content="@yield('og_image_alt', 'K-Elec showroom — Korean Technology Company, proudly made in Kenya')">
+    <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="@yield('og_title', trim($__env->yieldContent('title', 'K-Elec Warranties')))">
     <meta name="twitter:description" content="@yield('og_description', trim($__env->yieldContent('meta_description', 'K-Elec warranty portal for appliance warranty registration, tracking, lookup, and certificate downloads in Kenya.')))">
+    <meta name="twitter:image" content="@yield('og_image', 'https://k-elec.co.ke/storage/brand-shops/FyNQsy123XOFdAiBOCzjzasevNe2bg292ToKAcyd.jpg')">
+    <meta name="twitter:image:alt" content="@yield('og_image_alt', 'K-Elec showroom — Korean Technology Company, proudly made in Kenya')">
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700" rel="stylesheet" />
     <link rel="icon" type="image/png" sizes="32x32" href="https://k-elec.co.ke/favicon/favicon-32x32.png">

@@ -6,6 +6,8 @@
 @section('canonical_url', url('/'))
 @section('og_title', 'Register and Track Your Appliance Warranty with Confidence')
 @section('og_description', 'Use the official K-Elec warranty portal to register appliances, track warranty status, and access digital warranty certificates.')
+@section('og_image', 'https://k-elec.co.ke/storage/brand-shops/FyNQsy123XOFdAiBOCzjzasevNe2bg292ToKAcyd.jpg')
+@section('og_image_alt', 'K-Elec showroom with Google TV displays — Korean Technology Company, 3 year warranty, proudly made in Kenya')
 
 @push('head')
     <script type="application/ld+json">
