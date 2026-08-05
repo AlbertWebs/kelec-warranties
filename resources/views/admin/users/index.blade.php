@@ -43,37 +43,39 @@
                     @if ($canManageUsers)
                         <tr class="align-top transition hover:bg-brand-soft/80">
                             <td class="px-4 py-3.5">
-                                <form method="POST" action="{{ route('admin.users.update', $user) }}" class="grid gap-2 lg:grid-cols-7 lg:items-center">
-                                    @csrf
-                                    @method('PUT')
-                                    <input name="name" required value="{{ old('name', $user->name) }}" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand focus:ring-brand">
-                                    <input name="email" type="email" required value="{{ old('email', $user->email) }}" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand focus:ring-brand">
-                                    <input name="mobile_number" required value="{{ old('mobile_number', $user->mobile_number) }}" placeholder="07…" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand focus:ring-brand">
-                                    <select name="role" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand focus:ring-brand">
-                                        @foreach ($roles as $role)
-                                            <option value="{{ $role->name }}" @selected($user->hasRole($role->name))>{{ str_replace('_', ' ', $role->name) }}</option>
-                                        @endforeach
-                                    </select>
-                                    <label class="inline-flex items-center gap-2 text-sm text-slate-600">
-                                        <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $user->is_active)) class="rounded border-slate-300 text-brand focus:ring-brand">
-                                        Active
-                                    </label>
-                                    <button class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-brand-ink hover:border-brand hover:text-brand">Save</button>
-                                </form>
-                                @unless (auth()->id() === $user->id)
-                                    <form
-                                        method="POST"
-                                        action="{{ route('admin.users.destroy', $user) }}"
-                                        class="mt-2 flex justify-end"
-                                        onsubmit="return confirm('Delete {{ $user->name }}? This cannot be undone.');"
-                                    >
+                                <div class="grid gap-2 lg:grid-cols-7 lg:items-center">
+                                    <form method="POST" action="{{ route('admin.users.update', $user) }}" class="contents">
                                         @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50">
-                                            Delete
-                                        </button>
+                                        @method('PUT')
+                                        <input name="name" required value="{{ old('name', $user->name) }}" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand focus:ring-brand">
+                                        <input name="email" type="email" required value="{{ old('email', $user->email) }}" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand focus:ring-brand">
+                                        <input name="mobile_number" required value="{{ old('mobile_number', $user->mobile_number) }}" placeholder="07…" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand focus:ring-brand">
+                                        <select name="role" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand focus:ring-brand">
+                                            @foreach ($roles as $role)
+                                                <option value="{{ $role->name }}" @selected($user->hasRole($role->name))>{{ str_replace('_', ' ', $role->name) }}</option>
+                                            @endforeach
+                                        </select>
+                                        <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                                            <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $user->is_active)) class="rounded border-slate-300 text-brand focus:ring-brand">
+                                            Active
+                                        </label>
+                                        <button class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-brand-ink hover:border-brand hover:text-brand">Save</button>
                                     </form>
-                                @endunless
+                                    @unless (auth()->id() === $user->id)
+                                        <form
+                                            method="POST"
+                                            action="{{ route('admin.users.destroy', $user) }}"
+                                            class="contents"
+                                            onsubmit="return confirm('Delete {{ $user->name }}? This cannot be undone.');"
+                                        >
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 transition hover:border-red-300 hover:bg-red-50">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    @endunless
+                                </div>
                             </td>
                         </tr>
                     @else
