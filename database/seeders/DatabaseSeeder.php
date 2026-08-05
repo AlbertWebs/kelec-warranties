@@ -102,8 +102,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password@ChangeMe!'),
                 'email_verified_at' => now(),
                 'is_active' => true,
-                'mobile_number' => '0723014032',
-                'mobile_normalized' => '254723014032',
+                'mobile_number' => '+254791359251',
+                'mobile_normalized' => '254791359251',
             ]
         );
         $admin->syncRoles(['super_admin']);
