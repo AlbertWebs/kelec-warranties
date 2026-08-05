@@ -102,6 +102,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'is_active' => true,
+                'mobile_number' => '0723014032',
+                'mobile_normalized' => '254723014032',
             ]
         );
         $admin->syncRoles(['super_admin']);
@@ -113,6 +115,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'is_active' => true,
+                'mobile_number' => '0700000012',
+                'mobile_normalized' => '254700000012',
             ]
         )->syncRoles(['warranty_admin']);
 
@@ -123,6 +127,8 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'is_active' => true,
+                'mobile_number' => '0700000013',
+                'mobile_normalized' => '254700000013',
             ]
         )->syncRoles(['customer_support']);
 

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAdminAccess;
+use App\Http\Middleware\EnsureLoginOtpPending;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\VerifyIntegrationToken;
 use Illuminate\Foundation\Application;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => EnsureAdminAccess::class,
             'active' => EnsureUserIsActive::class,
             'integration' => VerifyIntegrationToken::class,
+            'login.otp' => EnsureLoginOtpPending::class,
         ]);
 
         $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {
