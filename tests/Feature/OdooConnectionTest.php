@@ -34,7 +34,8 @@ class OdooConnectionTest extends TestCase
 
         $this->assertFalse($result['ok']);
         $this->assertSame('error', $result['flash']);
-        $this->assertStringContainsString('not configured', $result['message']);
+        $this->assertStringContainsString('Missing:', $result['message']);
+        $this->assertStringContainsString('username', $result['message']);
     }
 
     public function test_connection_fails_when_odoo_rejects_authentication(): void

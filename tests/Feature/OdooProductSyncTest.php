@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Jobs\SyncOdooProducts;
 use App\Models\OdooProductSyncFailure;
 use App\Models\OdooProductSyncRun;
 use App\Models\Product;
@@ -11,7 +10,6 @@ use App\Services\Odoo\OdooProductService;
 use App\Services\ProductSyncService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
 use Mockery;
 use Tests\TestCase;
 
@@ -25,23 +23,36 @@ class OdooProductSyncTest extends TestCase
         $this->seed(DatabaseSeeder::class);
     }
 
-    public function test_admin_can_queue_product_sync(): void
+    public function test_admin_can_run_product_sync(): void
     {
-        Queue::fake();
         $admin = User::where('email', 'admin@kelec.test')->firstOrFail();
+
+        $odooMock = Mockery::mock(OdooProductService::class);
+        $odooMock->shouldReceive('fetchProductsBatch')->once()->andReturn([
+            ['id' => 501, 'name' => 'Synced Product', 'default_code' => 'SKU-501'],
+        ]);
+        $odooMock->shouldReceive('upsertProductFromOdoo')
+            ->once()
+            ->andReturnUsing(fn ($payload) => Product::factory()->create([
+                'odoo_id' => (string) $payload['id'],
+                'name' => $payload['name'],
+                'default_code' => $payload['default_code'],
+            ]));
+        $this->app->instance(OdooProductService::class, $odooMock);
 
         $this->actingAs($admin)
             ->post(route('admin.odoo.products.sync'), [
                 'sync_type' => 'full',
                 'confirm_full' => 'yes',
             ])
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHas('success');
 
         $this->assertDatabaseHas('odoo_product_sync_runs', [
             'sync_type' => 'full',
-            'status' => 'pending',
+            'status' => 'completed',
+            'created_records' => 1,
         ]);
-        Queue::assertPushed(SyncOdooProducts::class);
     }
 
     public function test_sync_service_updates_records_and_tracks_failures(): void
@@ -117,6 +128,25 @@ class OdooProductSyncTest extends TestCase
 
         $this->assertEquals('resolved', $failure->status);
         $this->assertEquals(1, $failure->retry_count);
+    }
+
+    public function test_imported_stat_links_to_odoo_product_list(): void
+    {
+        $admin = User::where('email', 'admin@kelec.test')->firstOrFail();
+        Product::factory()->create(['name' => 'Odoo Lamp', 'is_odoo_managed' => true, 'odoo_id' => '901']);
+        Product::factory()->create(['name' => 'Local Only Fan', 'is_odoo_managed' => false, 'odoo_id' => null]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.odoo.products.index'))
+            ->assertOk()
+            ->assertSee(route('admin.products.index', ['source' => 'odoo'], false), false);
+
+        $this->actingAs($admin)
+            ->get(route('admin.products.index', ['source' => 'odoo']))
+            ->assertOk()
+            ->assertSee('Imported Odoo products')
+            ->assertSee('Odoo Lamp')
+            ->assertDontSee('Local Only Fan');
     }
 }
 

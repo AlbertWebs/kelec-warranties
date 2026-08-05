@@ -32,15 +32,31 @@ class OdooClient
         $username = trim((string) $settings->get('odoo_username', ''));
         $apiKey = (string) $settings->get('odoo_api_key', '');
 
-        if ($baseUrl === '' || $database === '' || $username === '' || $apiKey === '') {
+        $missing = [];
+        if ($baseUrl === '') {
+            $missing[] = 'Base URL';
+        }
+        if ($database === '') {
+            $missing[] = 'database';
+        }
+        if ($username === '') {
+            $missing[] = 'username';
+        }
+        if ($apiKey === '') {
+            $missing[] = 'API key';
+        }
+
+        if ($missing !== []) {
             $this->log('authenticate', $baseUrl !== '' ? $baseUrl.'/jsonrpc' : null, null, 'Incomplete Odoo credentials', 'failed');
+
+            $list = implode(', ', $missing);
 
             return [
                 'ok' => false,
                 'flash' => 'error',
                 'message' => $this->mockMode()
-                    ? 'Mock mode is enabled and Odoo is not configured. Add Base URL, database, username, and API key in Settings to test a live connection.'
-                    : 'Odoo connection failed: Base URL, database, username, and API key are required.',
+                    ? "Mock mode is on and Odoo credentials are incomplete. Missing: {$list}. Add them under Admin → Settings → Odoo, then test again."
+                    : "Odoo connection failed. Missing: {$list}.",
             ];
         }
 

@@ -24,9 +24,10 @@ class ProductSyncService
             'metadata' => ['queued_at' => now()->toIso8601String()],
         ]);
 
-        \App\Jobs\SyncOdooProducts::dispatch($run->id);
+        // Run immediately so Admin → Sync works without a separate queue worker.
+        $this->runSync($run->id);
 
-        return $run;
+        return $run->fresh();
     }
 
     public function runSync(int $runId): OdooProductSyncRun

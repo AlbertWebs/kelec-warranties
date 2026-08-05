@@ -16,12 +16,20 @@ class ProductController extends Controller
         abort_unless($request->user()->can('products.view'), 403);
 
         $products = Product::with('category')
-            ->when($request->filled('q'), fn ($q) => $q->where('name', 'like', '%'.$request->q.'%')
-                ->orWhere('sku', 'like', '%'.$request->q.'%')
-                ->orWhere('model', 'like', '%'.$request->q.'%')
-                ->orWhere('default_code', 'like', '%'.$request->q.'%')
-                ->orWhere('barcode', 'like', '%'.$request->q.'%')
-                ->orWhere('serial_number', 'like', '%'.$request->q.'%'))
+            ->when($request->input('source') === 'odoo', fn ($q) => $q->where('is_odoo_managed', true))
+            ->when($request->input('source') === 'local', fn ($q) => $q->where('is_odoo_managed', false))
+            ->when($request->filled('q'), function ($q) use ($request) {
+                $term = '%'.$request->q.'%';
+                $q->where(function ($inner) use ($term) {
+                    $inner->where('name', 'like', $term)
+                        ->orWhere('sku', 'like', $term)
+                        ->orWhere('model', 'like', $term)
+                        ->orWhere('default_code', 'like', $term)
+                        ->orWhere('barcode', 'like', $term)
+                        ->orWhere('serial_number', 'like', $term)
+                        ->orWhere('odoo_id', 'like', $term);
+                });
+            })
             ->latest()
             ->paginate(20)
             ->withQueryString();

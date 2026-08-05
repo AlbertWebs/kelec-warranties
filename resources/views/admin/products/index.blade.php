@@ -3,14 +3,29 @@
 @section('title', 'Products')
 
 @section('content')
-@php $hasSearch = filled(request('q')); @endphp
+@php
+    $hasSearch = filled(request('q'));
+    $source = request('source');
+    $hasSourceFilter = in_array($source, ['odoo', 'local'], true);
+@endphp
 
 <div class="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
     <div>
-        <h1 class="text-2xl font-bold text-brand-ink">Products</h1>
+        <h1 class="text-2xl font-bold text-brand-ink">
+            @if ($source === 'odoo')
+                Imported Odoo products
+            @elseif ($source === 'local')
+                Local products
+            @else
+                Products
+            @endif
+        </h1>
         <p class="mt-1 text-sm text-slate-500">
             {{ number_format($products->total()) }} {{ Str::plural('product', $products->total()) }}
-            @if ($hasSearch)<span class="text-slate-400">· filtered</span>@endif
+            @if ($hasSearch || $hasSourceFilter)<span class="text-slate-400">· filtered</span>@endif
+            @if ($source === 'odoo')
+                <a href="{{ route('admin.odoo.products.index') }}" class="ml-2 font-medium text-brand hover:underline">Back to Odoo sync</a>
+            @endif
         </p>
     </div>
     @can('products.manage')
@@ -19,6 +34,9 @@
 </div>
 
 <form method="GET" class="mb-4">
+    @if ($hasSourceFilter)
+        <input type="hidden" name="source" value="{{ $source }}">
+    @endif
     <div class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div class="relative min-w-0 flex-1">
@@ -29,7 +47,9 @@
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <button type="submit" class="rounded-lg bg-brand-navy px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-ink">Apply</button>
-                @if ($hasSearch)<a href="{{ route('admin.products.index') }}" class="text-sm font-medium text-brand hover:underline">Clear</a>@endif
+                @if ($hasSearch || $hasSourceFilter)
+                    <a href="{{ route('admin.products.index') }}" class="text-sm font-medium text-brand hover:underline">Clear</a>
+                @endif
             </div>
         </div>
     </div>

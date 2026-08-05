@@ -32,10 +32,11 @@
         <div class="text-xs uppercase tracking-wide text-slate-500">Last Sync</div>
         <div class="mt-1 text-sm font-semibold text-brand-ink">{{ optional($stats['last_sync_at'])->format('d M Y H:i') ?? 'Never' }}</div>
     </div>
-    <div class="rounded-xl border bg-white p-4 shadow-sm">
+    <a href="{{ route('admin.products.index', ['source' => 'odoo']) }}" class="rounded-xl border bg-white p-4 shadow-sm transition hover:border-brand hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand/30">
         <div class="text-xs uppercase tracking-wide text-slate-500">Imported</div>
         <div class="mt-1 text-lg font-semibold text-brand-ink">{{ number_format($stats['imported']) }}</div>
-    </div>
+        <div class="mt-1 text-xs font-medium text-brand">View Odoo products →</div>
+    </a>
     <div class="rounded-xl border bg-white p-4 shadow-sm">
         <div class="text-xs uppercase tracking-wide text-slate-500">Updated</div>
         <div class="mt-1 text-lg font-semibold text-brand-ink">{{ number_format($stats['updated']) }}</div>

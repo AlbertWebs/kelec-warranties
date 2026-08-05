@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\OdooProductSyncFailure;
 use App\Models\OdooProductSyncRun;
+use App\Models\Product;
 use App\Services\ProductSyncService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class OdooProductSyncController extends Controller
 
         $stats = [
             'last_sync_at' => $lastCompleted?->completed_at,
-            'imported' => (int) OdooProductSyncRun::sum('created_records'),
+            'imported' => (int) Product::query()->where('is_odoo_managed', true)->count(),
             'updated' => (int) OdooProductSyncRun::sum('updated_records'),
             'failed' => (int) OdooProductSyncFailure::where('status', 'pending')->count(),
             'status' => $latest?->status ?? 'never',
@@ -56,7 +57,13 @@ class OdooProductSyncController extends Controller
 
         $run = $productSyncService->queueSync($data['sync_type'], $request->user()->id);
 
-        return back()->with('success', "Product sync queued ({$run->sync_type}). Run #{$run->id}");
+        $status = $run->status;
+        $summary = "created {$run->created_records}, updated {$run->updated_records}, failed {$run->failed_records}";
+
+        return back()->with(
+            in_array($status, ['completed', 'completed_with_errors'], true) ? 'success' : 'error',
+            "Product sync {$status} (Run #{$run->id}): {$summary}."
+        );
     }
 
     public function retryFailure(Request $request, ProductSyncService $productSyncService, OdooProductSyncFailure $failure): RedirectResponse
