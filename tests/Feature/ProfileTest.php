@@ -12,24 +12,33 @@ class ProfileTest extends TestCase
 
     public function test_profile_page_is_displayed(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'mobile_number' => '0723014032',
+            'mobile_normalized' => '254723014032',
+        ]);
 
         $response = $this
             ->actingAs($user)
             ->get('/profile');
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertSee('OTP mobile number')
+            ->assertSee('0723014032');
     }
 
     public function test_profile_information_can_be_updated(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'mobile_number' => '0700000011',
+            'mobile_normalized' => '254700000011',
+        ]);
 
         $response = $this
             ->actingAs($user)
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
+                'mobile_number' => '+254791359251',
             ]);
 
         $response
@@ -40,18 +49,40 @@ class ProfileTest extends TestCase
 
         $this->assertSame('Test User', $user->name);
         $this->assertSame('test@example.com', $user->email);
+        $this->assertSame('+254791359251', $user->mobile_number);
+        $this->assertSame('254791359251', $user->mobile_normalized);
         $this->assertNull($user->email_verified_at);
+    }
+
+    public function test_profile_rejects_invalid_otp_mobile_number(): void
+    {
+        $user = User::factory()->create();
+
+        $this
+            ->actingAs($user)
+            ->from('/profile')
+            ->patch('/profile', [
+                'name' => $user->name,
+                'email' => $user->email,
+                'mobile_number' => '123',
+            ])
+            ->assertSessionHasErrors('mobile_number')
+            ->assertRedirect('/profile');
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'mobile_number' => '0723014032',
+            'mobile_normalized' => '254723014032',
+        ]);
 
         $response = $this
             ->actingAs($user)
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => $user->email,
+                'mobile_number' => '0723014032',
             ]);
 
         $response

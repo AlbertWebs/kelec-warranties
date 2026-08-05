@@ -1,7 +1,7 @@
 <section>
     <header class="mb-5 border-b border-gray-100 pb-4">
         <h2 class="text-base font-semibold text-brand-ink">Profile information</h2>
-        <p class="mt-1 text-sm text-gray-500">Update your display name and email address.</p>
+        <p class="mt-1 text-sm text-gray-500">Update your name, email, and the mobile number used for login OTP.</p>
     </header>
 
     <form id="send-verification" method="post" action="{{ route('verification.send') }}">
@@ -56,6 +56,27 @@
                     </p>
                 @endif
             @endif
+        </div>
+
+        <div class="auth-field">
+            <label for="mobile_number" class="auth-label">OTP mobile number</label>
+            <input
+                id="mobile_number"
+                name="mobile_number"
+                type="tel"
+                class="auth-input"
+                value="{{ old('mobile_number', $user->mobile_number) }}"
+                required
+                autocomplete="tel"
+                placeholder="07XXXXXXXX or +2547XXXXXXXX"
+            >
+            <p class="mt-1 text-xs text-slate-500">
+                Login verification SMS is sent to this number
+                @if ($user->mobile_normalized)
+                    <span class="font-medium text-slate-600">(currently {{ $user->mobile_normalized }})</span>
+                @endif.
+            </p>
+            <x-input-error class="!mt-0" :messages="$errors->get('mobile_number')" />
         </div>
 
         <div class="pt-1">

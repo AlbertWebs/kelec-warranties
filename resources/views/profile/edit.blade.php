@@ -16,7 +16,7 @@
     <div>
         <p class="text-xs font-semibold uppercase tracking-wider text-brand">Account</p>
         <h1 class="mt-1 text-2xl font-bold text-brand-ink">Profile settings</h1>
-        <p class="mt-1 text-sm text-gray-500">Manage your name, email, and password for the admin portal.</p>
+        <p class="mt-1 text-sm text-gray-500">Manage your name, email, OTP mobile number, and password.</p>
     </div>
     <div class="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
         <span class="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-brand-navy text-sm font-semibold text-white">
@@ -25,6 +25,9 @@
         <div class="min-w-0">
             <p class="truncate text-sm font-semibold text-brand-ink">{{ $user->name }}</p>
             <p class="truncate text-xs text-gray-500">{{ $user->email }}</p>
+            @if ($user->mobile_number)
+                <p class="truncate text-xs text-gray-500">OTP: {{ $user->mobile_number }}</p>
+            @endif
             <p class="truncate text-[11px] capitalize text-brand-navy/70">{{ $roleLabel }}</p>
         </div>
     </div>
@@ -46,7 +49,8 @@
             <h2 class="text-sm font-semibold text-amber-950">Security tips</h2>
             <ul class="mt-3 space-y-2 text-sm text-amber-900/80">
                 <li>Use a unique password for this admin account.</li>
-                <li>Keep your email up to date for recovery and notifications.</li>
+                <li>Keep your OTP mobile number current — login SMS goes there.</li>
+                <li>Keep your email up to date for recovery and OTP backup.</li>
                 <li>Log out on shared devices after finishing work.</li>
             </ul>
         </section>
