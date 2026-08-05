@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\PhoneNumberService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -111,7 +113,21 @@ class UserController extends Controller
         }
 
         $name = $user->name;
-        $user->delete();
+
+        try {
+            $user->syncRoles([]);
+            $user->delete();
+        } catch (QueryException $e) {
+            // Shared MySQL hosts occasionally hit error 1615 on native prepares.
+            if (! str_contains($e->getMessage(), '1615')) {
+                throw $e;
+            }
+
+            DB::reconnect();
+            $user->refresh();
+            $user->syncRoles([]);
+            $user->delete();
+        }
 
         return back()->with('success', "User {$name} deleted.");
     }
