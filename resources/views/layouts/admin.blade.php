@@ -32,45 +32,59 @@
             @php
                 $groups = [
                     'Overview' => [
-                        ['admin.dashboard', 'Dashboard', 'dashboard'],
+                        ['admin.dashboard', 'Dashboard', 'dashboard', null],
                     ],
                     'Warranties' => [
-                        ['admin.warranties.index', 'All warranties', 'warranties'],
-                        ['admin.warranties.pending', 'Pending verification', 'pending'],
-                        ['admin.claims.index', 'Claims', 'claims'],
-                        ['admin.customers.index', 'Customers', 'customers'],
+                        ['admin.warranties.index', 'All warranties', 'warranties', 'warranties.view'],
+                        ['admin.warranties.pending', 'Pending verification', 'pending', 'warranties.view'],
+                        ['admin.claims.index', 'Claims', 'claims', 'claims.view'],
+                        ['admin.customers.index', 'Customers', 'customers', 'customers.view'],
                     ],
                     'Catalog' => [
-                        ['admin.products.index', 'Products', 'products'],
-                        ['admin.product-categories.index', 'Categories', 'categories'],
-                        ['admin.dealers.index', 'Dealers', 'dealers'],
-                        ['admin.purchase-sources.index', 'Purchase sources', 'sources'],
+                        ['admin.products.index', 'Products', 'products', 'products.view'],
+                        ['admin.product-categories.index', 'Categories', 'categories', 'products.view'],
+                        ['admin.dealers.index', 'Dealers', 'dealers', 'dealers.view'],
+                        ['admin.purchase-sources.index', 'Purchase sources', 'sources', 'purchase_sources.manage|dealers.view'],
                     ],
                     'Operations' => [
-                        ['admin.odoo.index', 'Odoo sync', 'odoo'],
-                        ['admin.odoo.products.index', 'Odoo product sync', 'odoo'],
-                        ['admin.sms.index', 'SMS', 'sms'],
-                        ['admin.notifications.index', 'Notifications', 'notifications'],
-                        ['admin.reports.index', 'Reports', 'reports'],
+                        ['admin.odoo.index', 'Odoo sync', 'odoo', 'odoo.view'],
+                        ['admin.odoo.products.index', 'Odoo product sync', 'odoo', 'odoo.view'],
+                        ['admin.sms.index', 'SMS', 'sms', 'sms.view'],
+                        ['admin.notifications.index', 'Notifications', 'notifications', 'notifications.view'],
+                        ['admin.reports.index', 'Reports', 'reports', 'reports.view'],
                     ],
                     'Administration' => [
-                        ['admin.users.index', 'Users', 'users'],
-                        ['admin.roles.index', 'Roles & permissions', 'roles'],
-                        ['admin.audit-logs.index', 'Audit logs', 'audit'],
-                        ['admin.legal.edit', 'Legal pages', 'legal'],
-                        ['admin.settings.edit', 'Settings', 'settings'],
+                        ['admin.users.index', 'Users', 'users', 'users.view|users.manage'],
+                        ['admin.roles.index', 'Roles & permissions', 'roles', 'roles.manage'],
+                        ['admin.audit-logs.index', 'Audit logs', 'audit', 'audit_logs.view'],
+                        ['admin.legal.edit', 'Legal pages', 'legal', 'settings.manage'],
+                        ['admin.settings.edit', 'Settings', 'settings', 'settings.manage'],
                     ],
                 ];
             @endphp
             <div class="space-y-5">
                 @foreach ($groups as $group => $links)
+                    @php
+                        $visibleLinks = collect($links)->filter(function (array $link) {
+                            $ability = $link[3] ?? null;
+                            if ($ability === null || $ability === '') {
+                                return true;
+                            }
+
+                            return collect(explode('|', $ability))
+                                ->contains(fn (string $perm) => auth()->user()->can(trim($perm)));
+                        })->values();
+                    @endphp
+                    @continue($visibleLinks->isEmpty())
                     <div>
                         <p class="mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">{{ $group }}</p>
                         <div class="space-y-0.5">
-                            @foreach ($links as [$route, $label, $icon])
+                            @foreach ($visibleLinks as $link)
                                 @php
+                                    [$route, $label, $icon] = $link;
                                     $active = request()->routeIs($route)
-                                        || request()->routeIs(str_replace('.index', '.*', $route));
+                                        || request()->routeIs(str_replace('.index', '.*', $route))
+                                        || ($route === 'admin.warranties.pending' && request()->routeIs('admin.warranties.pending'));
                                 @endphp
                                 <a href="{{ route($route) }}"
                                    @class([

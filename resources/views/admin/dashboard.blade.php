@@ -119,18 +119,22 @@
                     <span class="font-semibold text-amber-800">{{ $stats['pending'] }}</span>
                 </a>
             </li>
-            <li>
-                <a href="{{ route('admin.odoo.index') }}" class="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5 text-sm transition hover:border-sky-200 hover:bg-sky-50/50">
-                    <span class="font-medium text-brand-ink">Odoo failures</span>
-                    <span class="font-semibold text-sky-800">{{ $stats['odoo_failures'] }}</span>
-                </a>
-            </li>
-            <li>
-                <a href="{{ route('admin.notifications.index') }}" class="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5 text-sm transition hover:border-brand/20 hover:bg-brand-soft/60">
-                    <span class="font-medium text-brand-ink">SMS / email failures</span>
-                    <span class="font-semibold text-brand">{{ $stats['sms_failures'] }}/{{ $stats['email_failures'] }}</span>
-                </a>
-            </li>
+            @can('odoo.view')
+                <li>
+                    <a href="{{ route('admin.odoo.index') }}" class="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5 text-sm transition hover:border-sky-200 hover:bg-sky-50/50">
+                        <span class="font-medium text-brand-ink">Odoo failures</span>
+                        <span class="font-semibold text-sky-800">{{ $stats['odoo_failures'] }}</span>
+                    </a>
+                </li>
+            @endcan
+            @can('notifications.view')
+                <li>
+                    <a href="{{ route('admin.notifications.index') }}" class="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5 text-sm transition hover:border-brand/20 hover:bg-brand-soft/60">
+                        <span class="font-medium text-brand-ink">SMS / email failures</span>
+                        <span class="font-semibold text-brand">{{ $stats['sms_failures'] }}/{{ $stats['email_failures'] }}</span>
+                    </a>
+                </li>
+            @endcan
             <li>
                 <a href="{{ route('admin.warranties.index', ['status' => 'rejected']) }}" class="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2.5 text-sm transition hover:border-red-200 hover:bg-red-50/40">
                     <span class="font-medium text-brand-ink">Rejected</span>

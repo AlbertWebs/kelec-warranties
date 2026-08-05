@@ -14,6 +14,8 @@ class ClaimController extends Controller
 {
     public function index(Request $request): View
     {
+        abort_unless($request->user()->can('claims.view'), 403);
+
         $claims = WarrantyClaim::query()
             ->with(['customer', 'warranty'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->string('status')))
@@ -27,8 +29,10 @@ class ClaimController extends Controller
         ]);
     }
 
-    public function show(WarrantyClaim $claim): View
+    public function show(Request $request, WarrantyClaim $claim): View
     {
+        abort_unless($request->user()->can('claims.view'), 403);
+
         $claim->load(['customer', 'warranty.product']);
 
         return view('admin.claims.show', [
@@ -39,6 +43,7 @@ class ClaimController extends Controller
 
     public function update(Request $request, WarrantyClaim $claim): RedirectResponse
     {
+        abort_unless($request->user()->can('claims.manage'), 403);
         $validated = $request->validate([
             'status' => ['required', Rule::enum(ClaimStatus::class)],
             'admin_notes' => ['nullable', 'string', 'max:5000'],

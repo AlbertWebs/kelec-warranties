@@ -46,6 +46,7 @@ class DatabaseSeeder extends Seeder
             'sms.manage',
             'notifications.view',
             'reports.view',
+            'users.view',
             'users.manage',
             'roles.manage',
             'audit_logs.view',
@@ -79,6 +80,8 @@ class DatabaseSeeder extends Seeder
             'sms.view',
             'notifications.view',
             'reports.view',
+            'users.view',
+            'users.manage',
             'claims.view',
             'claims.manage',
         ]);

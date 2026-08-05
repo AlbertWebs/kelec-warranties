@@ -19,13 +19,14 @@ class UserController extends Controller
 
     public function index(Request $request): View
     {
-        abort_unless($request->user()->can('users.manage'), 403);
+        abort_unless($request->user()->can('users.view') || $request->user()->can('users.manage'), 403);
 
         $users = User::with('roles')->latest()->paginate(20);
 
         return view('admin.users.index', [
             'users' => $users,
             'roles' => Role::orderBy('name')->get(),
+            'canManageUsers' => $request->user()->can('users.manage'),
         ]);
     }
 
@@ -92,5 +93,26 @@ class UserController extends Controller
         $user->syncRoles([$data['role']]);
 
         return back()->with('success', 'User updated.');
+    }
+
+    public function destroy(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($request->user()->can('users.manage'), 403);
+
+        if ($request->user()->is($user)) {
+            return back()->with('error', 'You cannot delete your own account.');
+        }
+
+        if ($user->hasRole('super_admin')) {
+            $superAdminCount = User::role('super_admin')->count();
+            if ($superAdminCount <= 1) {
+                return back()->with('error', 'You cannot delete the last Super Administrator.');
+            }
+        }
+
+        $name = $user->name;
+        $user->delete();
+
+        return back()->with('success', "User {$name} deleted.");
     }
 }
