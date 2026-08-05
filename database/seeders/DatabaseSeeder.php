@@ -96,10 +96,10 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $admin = User::query()->updateOrCreate(
-            ['email' => 'admin@kelec.test'],
+            ['email' => 'admin@k-elec.co.ke'],
             [
                 'name' => 'Super Administrator',
-                'password' => Hash::make('password'),
+                'password' => Hash::make('password@ChangeMe!'),
                 'email_verified_at' => now(),
                 'is_active' => true,
                 'mobile_number' => '0723014032',

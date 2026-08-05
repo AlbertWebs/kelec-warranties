@@ -32,7 +32,7 @@ php artisan storage:link
 
 | Role | Email | Password |
 |------|-------|----------|
-| Super Administrator | admin@kelec.test | password |
+| Super Administrator | admin@k-elec.co.ke | password@ChangeMe! |
 | Warranty Administrator | warranty@kelec.test | password |
 | Customer Support | support@kelec.test | password |
 
