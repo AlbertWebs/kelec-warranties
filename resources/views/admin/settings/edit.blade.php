@@ -14,7 +14,7 @@
 <div
     class="mx-auto max-w-5xl"
     x-data="{
-        tab: 'general',
+        tab: @js(request('tab', 'general')),
         showOdooKey: false,
         showSmsKey: false,
         tabs: ['general', 'warranty', 'privacy', 'odoo', 'sms', 'email']
@@ -290,6 +290,30 @@
                 <div class="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-3 text-sm text-slate-600">
                     SMTP host, port, username, and password are managed via environment variables (e.g. AWS SES).
                 </div>
+
+                <div class="mt-6 border-t border-slate-100 pt-5">
+                    <h3 class="text-sm font-semibold text-brand-ink">Send test email</h3>
+                    <p class="mt-1 text-sm text-slate-500">Dispatch a test message using the current mail configuration.</p>
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div class="auth-field sm:col-span-2">
+                            <label class="auth-label" for="test_email_to">Recipient</label>
+                            <input id="test_email_to" form="settings-test-email" type="email" name="to" required value="{{ old('to', auth()->user()->email) }}" class="auth-input" placeholder="you@example.com">
+                        </div>
+                        <div class="auth-field sm:col-span-2">
+                            <label class="auth-label" for="test_email_subject">Subject</label>
+                            <input id="test_email_subject" form="settings-test-email" type="text" name="subject" value="{{ old('subject', 'K-Elec warranty portal — test email') }}" class="auth-input">
+                        </div>
+                        <div class="auth-field sm:col-span-2">
+                            <label class="auth-label" for="test_email_body">Message</label>
+                            <textarea id="test_email_body" form="settings-test-email" name="body" rows="4" class="auth-input">{{ old('body', "This is a test email from the K-Elec warranty portal.\n\nIf you received this, outbound email is working.") }}</textarea>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button form="settings-test-email" type="submit" class="rounded-lg bg-brand-navy px-3.5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-ink">
+                            Send test email
+                        </button>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -335,5 +359,9 @@
             </div>
         </div>
     </section>
+
+    <form id="settings-test-email" method="POST" action="{{ route('admin.settings.test-email') }}" class="hidden">
+        @csrf
+    </form>
 </div>
 @endsection

@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\SettingsTestMail;
 use App\Services\SettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 
 class SettingsController extends Controller
@@ -81,5 +83,39 @@ class SettingsController extends Controller
         }
 
         return back()->with('success', 'Settings saved.');
+    }
+
+    public function sendTestEmail(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->can('settings.manage'), 403);
+
+        $data = $request->validate([
+            'to' => ['required', 'email', 'max:150'],
+            'subject' => ['nullable', 'string', 'max:150'],
+            'body' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $fromAddress = (string) $this->settingsService->get('mail_from_address', config('mail.from.address'));
+        $fromName = (string) $this->settingsService->get('mail_from_name', config('mail.from.name'));
+        $subject = $data['subject'] ?: 'K-Elec warranty portal — test email';
+        $body = $data['body'] ?: "This is a test email from the K-Elec warranty portal.\n\nIf you received this, outbound email is working.\n\nSent at: ".now()->toDateTimeString();
+
+        try {
+            $mailable = new SettingsTestMail($subject, $body);
+
+            if ($fromAddress !== '') {
+                $mailable->from($fromAddress, $fromName !== '' ? $fromName : null);
+            }
+
+            Mail::to($data['to'])->send($mailable);
+
+            return redirect()
+                ->route('admin.settings.edit', ['tab' => 'email'])
+                ->with('success', 'Test email sent to '.$data['to'].'.');
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('admin.settings.edit', ['tab' => 'email'])
+                ->with('error', 'Test email failed: '.$e->getMessage());
+        }
     }
 }

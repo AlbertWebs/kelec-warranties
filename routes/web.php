@@ -125,6 +125,7 @@ Route::middleware(['auth', 'verified', 'active', 'admin'])->prefix('admin')->nam
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    Route::post('/settings/test-email', [SettingsController::class, 'sendTestEmail'])->name('settings.test-email');
     Route::get('/legal-pages', [LegalContentController::class, 'edit'])->name('legal.edit');
     Route::put('/legal-pages', [LegalContentController::class, 'update'])->name('legal.update');
 
