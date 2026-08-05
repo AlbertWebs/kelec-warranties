@@ -2,7 +2,7 @@
     <div class="mb-5">
         <p class="text-xs font-semibold uppercase tracking-wider text-brand">Staff access</p>
         <h1 class="mt-1 text-xl font-bold text-brand-ink sm:text-2xl">Staff login</h1>
-        <p class="mt-1 text-sm text-gray-600">Sign in with email and password, then confirm the SMS code sent to your phone.</p>
+        <p class="mt-1 text-sm text-gray-600">Sign in with email and password, then confirm the SMS and email verification code.</p>
     </div>
 
     <x-auth-session-status class="mb-3" :status="session('status')" />

@@ -27,7 +27,7 @@ class AuthenticatedSessionController extends Controller
 
         return redirect()
             ->route('login.otp.show')
-            ->with('status', 'We sent a verification code to your registered mobile number.');
+            ->with('status', 'We sent a verification code by SMS and email.');
     }
 
     public function destroy(Request $request): RedirectResponse

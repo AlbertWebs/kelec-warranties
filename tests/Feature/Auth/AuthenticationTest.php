@@ -2,10 +2,12 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Mail\AdminLoginOtpMail;
 use App\Models\SmsLog;
 use App\Models\User;
 use App\Services\SettingsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
@@ -16,6 +18,7 @@ class AuthenticationTest extends TestCase
     {
         parent::setUp();
 
+        Mail::fake();
         app(SettingsService::class)->set('sms_enabled', false, 'sms', 'boolean');
     }
 
@@ -46,6 +49,9 @@ class AuthenticationTest extends TestCase
             'context' => 'admin_login_otp',
             'status' => 'mock',
         ]);
+        Mail::assertSent(AdminLoginOtpMail::class, function (AdminLoginOtpMail $mail) use ($user) {
+            return $mail->hasTo($user->email);
+        });
     }
 
     public function test_users_can_complete_login_with_valid_otp(): void

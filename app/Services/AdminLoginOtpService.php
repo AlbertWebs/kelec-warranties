@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class AdminLoginOtpService
 {
@@ -23,7 +25,7 @@ class AdminLoginOtpService
     ) {}
 
     /**
-     * @return array{masked_mobile: string}
+     * @return array{masked_mobile: string, masked_email: string}
      */
     public function startChallenge(User $user, bool $remember = false): array
     {
@@ -40,6 +42,12 @@ class AdminLoginOtpService
             ]);
         }
 
+        if (! filled($user->email)) {
+            throw ValidationException::withMessages([
+                'email' => 'Your account has no email address for OTP delivery.',
+            ]);
+        }
+
         $code = (string) random_int(100000, 999999);
         Cache::put($this->cacheKey($user->id), Hash::make($code), self::CODE_TTL_SECONDS);
 
@@ -52,19 +60,22 @@ class AdminLoginOtpService
             ],
         ]);
 
-        $message = "K-Elec: Your staff login code is {$code}. Valid for 10 minutes. Do not share this code.";
-        $result = $this->smsService->send($mobile, $message, 'admin_login_otp');
+        $smsSent = $this->sendOtpSms($mobile, $code);
+        $emailSent = $this->sendOtpEmail($user, $code);
 
-        if (! ($result['ok'] ?? false) && $this->settingsService->get('sms_enabled', false)) {
+        if (! $smsSent && ! $emailSent) {
             $this->clearChallenge();
             Cache::forget($this->cacheKey($user->id));
 
             throw ValidationException::withMessages([
-                'email' => 'Unable to send login SMS. Please try again or contact support.',
+                'email' => 'Unable to send the login code by SMS or email. Please try again or contact support.',
             ]);
         }
 
-        return ['masked_mobile' => $this->maskMobile($mobile)];
+        return [
+            'masked_mobile' => $this->maskMobile($mobile),
+            'masked_email' => $this->maskEmail($user->email),
+        ];
     }
 
     public function pendingUser(): ?User
@@ -87,6 +98,13 @@ class AdminLoginOtpService
         $mobile = $user->mobile_normalized ?: $this->phoneNumberService->normalize($user->mobile_number);
 
         return $mobile ? $this->maskMobile($mobile) : null;
+    }
+
+    public function maskedEmailForPending(): ?string
+    {
+        $user = $this->pendingUser();
+
+        return $user?->email ? $this->maskEmail($user->email) : null;
     }
 
     /**
@@ -179,6 +197,46 @@ class AdminLoginOtpService
         }
 
         return substr($digits, 0, 3).str_repeat('*', max(strlen($digits) - 6, 3)).substr($digits, -3);
+    }
+
+    public function maskEmail(string $email): string
+    {
+        [$local, $domain] = array_pad(explode('@', $email, 2), 2, '');
+        if ($domain === '' || $local === '') {
+            return '***';
+        }
+
+        $visible = substr($local, 0, min(2, strlen($local)));
+
+        return $visible.str_repeat('*', max(strlen($local) - 2, 1)).'@'.$domain;
+    }
+
+    protected function sendOtpSms(string $mobile, string $code): bool
+    {
+        $message = "K-Elec: Your staff login code is {$code}. Valid for 10 minutes. Do not share this code.";
+        $result = $this->smsService->send($mobile, $message, 'admin_login_otp');
+
+        return (bool) ($result['ok'] ?? false);
+    }
+
+    protected function sendOtpEmail(User $user, string $code): bool
+    {
+        $fromAddress = (string) $this->settingsService->get('mail_from_address', config('mail.from.address'));
+        $fromName = (string) $this->settingsService->get('mail_from_name', config('mail.from.name'));
+
+        try {
+            $mailable = new \App\Mail\AdminLoginOtpMail($user, $code);
+
+            if ($fromAddress !== '') {
+                $mailable->from($fromAddress, $fromName !== '' ? $fromName : null);
+            }
+
+            Mail::to($user->email)->send($mailable);
+
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     protected function cacheKey(int $userId): string

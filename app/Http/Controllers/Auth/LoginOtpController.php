@@ -22,6 +22,7 @@ class LoginOtpController extends Controller
 
         return view('auth.otp', [
             'maskedMobile' => $this->otpService->maskedMobileForPending(),
+            'maskedEmail' => $this->otpService->maskedEmailForPending(),
             'email' => $user->email,
         ]);
     }
@@ -45,7 +46,7 @@ class LoginOtpController extends Controller
     {
         $this->otpService->resend();
 
-        return back()->with('status', 'A new verification code has been sent by SMS.');
+        return back()->with('status', 'A new verification code has been sent by SMS and email.');
     }
 
     public function cancel(Request $request): RedirectResponse
