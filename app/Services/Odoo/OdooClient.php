@@ -154,10 +154,10 @@ class OdooClient
                 $sale = $this->findLatestPosSaleForProduct($uid, $productId);
             }
 
-            // Stock moves often have dates but no real partner details — enrich from POS when needed.
-            if (! $this->customerHasUsefulDetails(is_array($sale) ? ($sale['customer'] ?? null) : null)) {
+            // Stock moves often have dates but incomplete partner details — enrich from POS when needed.
+            if ($this->customerNeedsContactEnrichment(is_array($sale) ? ($sale['customer'] ?? null) : null)) {
                 $posSale = $this->findPosSaleBySerial($uid, $serialNumber);
-                if ((! is_array($posSale) || ! $this->customerHasUsefulDetails($posSale['customer'] ?? null)) && $productId > 0) {
+                if ((! is_array($posSale) || $this->customerNeedsContactEnrichment($posSale['customer'] ?? null)) && $productId > 0) {
                     $latestPos = $this->findLatestPosSaleForProduct($uid, $productId);
                     if (is_array($latestPos)) {
                         $posSale = $this->mergeSaleDetails($posSale, $latestPos);
@@ -528,27 +528,8 @@ class OdooClient
             ];
         }
 
-        try {
-            $partners = $this->executeKw($uid, 'res.partner', 'search_read', [
-                [['id', '=', $partnerId]],
-            ], [
-                'fields' => ['id', 'name', 'phone', 'mobile', 'email', 'street', 'street2', 'city', 'state_id', 'zip', 'comment'],
-                'limit' => 1,
-            ]);
-        } catch (Throwable) {
-            try {
-                $partners = $this->executeKw($uid, 'res.partner', 'search_read', [
-                    [['id', '=', $partnerId]],
-                ], [
-                    'fields' => ['id', 'name', 'phone', 'mobile', 'email', 'city'],
-                    'limit' => 1,
-                ]);
-            } catch (Throwable) {
-                $partners = [];
-            }
-        }
-
-        if ($partners === []) {
+        $partner = $this->readPartnerRecord($uid, $partnerId);
+        if ($partner === null) {
             if ($this->isGenericPosPartnerName($fallbackName)) {
                 return null;
             }
@@ -563,18 +544,173 @@ class OdooClient
             ];
         }
 
-        $partner = $partners[0];
+        $customer = $this->mapPartnerToCustomer($partner, $fallbackName, $partnerId);
+        if ($customer === null) {
+            return null;
+        }
+
+        // Contact records often keep phone/address on the commercial/parent partner.
+        if (! filled($customer['mobile_number'] ?? null) || ! filled($customer['town'] ?? null) || ! filled($customer['county'] ?? null)) {
+            $relatedIds = [];
+            foreach (['commercial_partner_id', 'parent_id'] as $relation) {
+                if (is_array($partner[$relation] ?? null) && (int) $partner[$relation][0] > 0) {
+                    $relatedIds[] = (int) $partner[$relation][0];
+                }
+            }
+
+            foreach (array_unique($relatedIds) as $relatedId) {
+                if ($relatedId === $partnerId) {
+                    continue;
+                }
+
+                $related = $this->readPartnerRecord($uid, $relatedId);
+                if ($related === null) {
+                    continue;
+                }
+
+                $relatedCustomer = $this->mapPartnerToCustomer($related, null, $relatedId);
+                if ($relatedCustomer === null) {
+                    continue;
+                }
+
+                $customer = $this->mergeCustomerDetails($customer, $relatedCustomer);
+            }
+        }
+
+        return $customer;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function readPartnerRecord(int $uid, int $partnerId): ?array
+    {
+        $fieldSets = [
+            $this->partnerContactFields($uid),
+            ['id', 'name', 'phone', 'email', 'street', 'street2', 'city', 'state_id', 'zip', 'commercial_partner_id', 'parent_id'],
+            ['id', 'name', 'phone', 'email', 'city', 'state_id'],
+            ['id', 'name', 'phone', 'email'],
+            ['id', 'name', 'phone'],
+            ['id', 'name'],
+        ];
+
+        foreach ($fieldSets as $fields) {
+            try {
+                $partners = $this->executeKw($uid, 'res.partner', 'search_read', [
+                    [['id', '=', $partnerId]],
+                ], [
+                    'fields' => array_values(array_unique($fields)),
+                    'limit' => 1,
+                ]);
+            } catch (Throwable) {
+                continue;
+            }
+
+            if ($partners !== []) {
+                return $partners[0];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function partnerContactFields(int $uid): array
+    {
+        static $fieldsByUid = [];
+
+        if (isset($fieldsByUid[$uid])) {
+            return $fieldsByUid[$uid];
+        }
+
+        $wanted = [
+            'id',
+            'name',
+            'phone',
+            'mobile',
+            'phone_sanitized',
+            'phone_formatted',
+            'email',
+            'street',
+            'street2',
+            'city',
+            'state_id',
+            'zip',
+            'contact_address',
+            'commercial_partner_id',
+            'parent_id',
+        ];
+
+        try {
+            $available = $this->executeKw($uid, 'res.partner', 'fields_get', [], [
+                'attributes' => ['type'],
+            ]);
+            $fieldsByUid[$uid] = array_values(array_filter(
+                $wanted,
+                fn (string $field) => array_key_exists($field, $available)
+            ));
+        } catch (Throwable) {
+            // Modern Odoo often has phone but not mobile — never request unknown fields.
+            $fieldsByUid[$uid] = [
+                'id',
+                'name',
+                'phone',
+                'email',
+                'street',
+                'street2',
+                'city',
+                'state_id',
+                'zip',
+                'contact_address',
+                'commercial_partner_id',
+                'parent_id',
+            ];
+        }
+
+        return $fieldsByUid[$uid];
+    }
+
+    /**
+     * @param  array<string, mixed>  $partner
+     * @return array{full_name: string|null, mobile_number: string|null, email: string|null, county: string|null, town: string|null, odoo_customer_id: int|null}|null
+     */
+    protected function mapPartnerToCustomer(array $partner, ?string $fallbackName, int $partnerId): ?array
+    {
         $fullName = $this->nullIfEmpty($partner['name'] ?? null) ?: $this->nullIfEmpty($fallbackName);
         if ($this->isGenericPosPartnerName($fullName)) {
             return null;
         }
 
         $mobile = $this->nullIfEmpty($partner['mobile'] ?? null)
-            ?: $this->nullIfEmpty($partner['phone'] ?? null);
+            ?: $this->nullIfEmpty($partner['phone'] ?? null)
+            ?: $this->nullIfEmpty($partner['phone_sanitized'] ?? null)
+            ?: $this->nullIfEmpty($partner['phone_formatted'] ?? null);
+
         $county = is_array($partner['state_id'] ?? null)
             ? $this->nullIfEmpty($partner['state_id'][1] ?? null)
             : null;
-        $town = $this->nullIfEmpty($partner['city'] ?? null);
+
+        $town = $this->nullIfEmpty($partner['city'] ?? null)
+            ?: $this->nullIfEmpty($partner['street'] ?? null)
+            ?: $this->nullIfEmpty($partner['street2'] ?? null);
+
+        // Last resort: first non-empty line from the complete address block.
+        if (! $town) {
+            $contactAddress = $this->nullIfEmpty($partner['contact_address'] ?? null);
+            if ($contactAddress) {
+                $lines = preg_split('/\r\n|\r|\n/', $contactAddress) ?: [];
+                foreach ($lines as $line) {
+                    $line = trim((string) $line);
+                    if ($line === '' || strcasecmp($line, (string) $fullName) === 0) {
+                        continue;
+                    }
+                    $town = $line;
+                    break;
+                }
+            }
+        }
 
         return [
             'full_name' => $fullName,
@@ -584,6 +720,22 @@ class OdooClient
             'town' => $town,
             'odoo_customer_id' => $partnerId,
         ];
+    }
+
+    /**
+     * @param  array{full_name: string|null, mobile_number: string|null, email: string|null, county: string|null, town: string|null, odoo_customer_id: int|null}  $base
+     * @param  array{full_name: string|null, mobile_number: string|null, email: string|null, county: string|null, town: string|null, odoo_customer_id: int|null}  $extra
+     * @return array{full_name: string|null, mobile_number: string|null, email: string|null, county: string|null, town: string|null, odoo_customer_id: int|null}
+     */
+    protected function mergeCustomerDetails(array $base, array $extra): array
+    {
+        foreach (['full_name', 'mobile_number', 'email', 'county', 'town'] as $field) {
+            if (! filled($base[$field] ?? null) && filled($extra[$field] ?? null)) {
+                $base[$field] = $extra[$field];
+            }
+        }
+
+        return $base;
     }
 
     protected function partnerIdFromAccountMove(int $uid, mixed $accountMove): ?int
@@ -657,13 +809,28 @@ class OdooClient
     /**
      * @param  array<string, mixed>|null  $customer
      */
+    protected function customerNeedsContactEnrichment(?array $customer): bool
+    {
+        if (! $this->customerHasUsefulDetails($customer)) {
+            return true;
+        }
+
+        return ! filled($customer['mobile_number'] ?? null)
+            || (! filled($customer['county'] ?? null) && ! filled($customer['town'] ?? null));
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $customer
+     */
     protected function customerHasUsefulDetails(?array $customer): bool
     {
         if (! is_array($customer)) {
             return false;
         }
 
-        if ($this->isGenericPosPartnerName($customer['full_name'] ?? null)) {
+        if ($this->isGenericPosPartnerName($customer['full_name'] ?? null)
+            && ! filled($customer['mobile_number'] ?? null)
+            && ! filled($customer['email'] ?? null)) {
             return false;
         }
 
@@ -705,8 +872,23 @@ class OdooClient
         }
 
         $preferredCustomer = is_array($preferred['customer'] ?? null) ? $preferred['customer'] : null;
-        if ($this->customerHasUsefulDetails($preferredCustomer)) {
-            $merged['customer'] = $preferredCustomer;
+        $baseCustomer = is_array($merged['customer'] ?? null) ? $merged['customer'] : null;
+
+        if ($this->customerHasUsefulDetails($preferredCustomer) || $this->customerHasUsefulDetails($baseCustomer)) {
+            $empty = [
+                'full_name' => null,
+                'mobile_number' => null,
+                'email' => null,
+                'county' => null,
+                'town' => null,
+                'odoo_customer_id' => null,
+            ];
+
+            // Prefer POS/preferred contact values, then fill any gaps from the earlier sale.
+            $merged['customer'] = $this->mergeCustomerDetails(
+                $this->mergeCustomerDetails($empty, $preferredCustomer ?: []),
+                $baseCustomer ?: []
+            );
         } elseif (! array_key_exists('customer', $merged)) {
             $merged['customer'] = $preferredCustomer;
         }
