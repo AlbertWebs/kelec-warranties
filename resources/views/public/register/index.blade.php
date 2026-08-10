@@ -33,6 +33,22 @@
             $initialStep = 3;
         }
     }
+
+    $wizardPrefill = [
+        'serial_number' => old('serial_number', $prefill['serial_number'] ?? request('serial')),
+        'product_id' => old('product_id', $prefill['product_id'] ?? ''),
+        'product_category_id' => old('product_category_id', $prefill['product_category_id'] ?? ''),
+        'product_name' => old('product_name', $prefill['product_name'] ?? ''),
+        'product_model' => old('product_model', $prefill['product_model'] ?? ''),
+        'purchase_date' => old('purchase_date', $prefill['purchase_date'] ?? ''),
+        'invoice_number' => old('invoice_number', $prefill['invoice_number'] ?? ''),
+        'branch_name' => old('branch_name', $prefill['branch_name'] ?? ''),
+        'full_name' => old('full_name', $prefill['full_name'] ?? ''),
+        'mobile_number' => old('mobile_number', $prefill['mobile_number'] ?? ''),
+        'email' => old('email', $prefill['email'] ?? ''),
+    ];
+
+    $serialValidatedInitially = in_array(($serialResult['status'] ?? ''), ['found', 'found_local'], true);
 @endphp
 
 <div class="mx-auto max-w-3xl" x-data="warrantyWizard()">
@@ -262,24 +278,11 @@
 
 <script>
 function warrantyWizard() {
-    const initialPrefill = @json([
-        'serial_number' => old('serial_number', $prefill['serial_number'] ?? request('serial')),
-        'product_id' => old('product_id', $prefill['product_id'] ?? ''),
-        'product_category_id' => old('product_category_id', $prefill['product_category_id'] ?? ''),
-        'product_name' => old('product_name', $prefill['product_name'] ?? ''),
-        'product_model' => old('product_model', $prefill['product_model'] ?? ''),
-        'purchase_date' => old('purchase_date', $prefill['purchase_date'] ?? ''),
-        'invoice_number' => old('invoice_number', $prefill['invoice_number'] ?? ''),
-        'branch_name' => old('branch_name', $prefill['branch_name'] ?? ''),
-        'full_name' => old('full_name', $prefill['full_name'] ?? ''),
-        'mobile_number' => old('mobile_number', $prefill['mobile_number'] ?? ''),
-        'email' => old('email', $prefill['email'] ?? ''),
-    ]);
-
+    const initialPrefill = @json($wizardPrefill);
     const initialSerialResult = @json($serialResult);
 
     return {
-        step: {{ $initialStep }},
+        step: {{ (int) $initialStep }},
         submitting: false,
         submitSuccess: false,
         submitError: '',
@@ -287,7 +290,7 @@ function warrantyWizard() {
         serialNumber: initialPrefill.serial_number || '',
         validatingSerial: false,
         serialError: '',
-        serialValidated: @json(in_array(($serialResult['status'] ?? ''), ['found', 'found_local'], true)),
+        serialValidated: @json($serialValidatedInitially),
         serialMessage: initialSerialResult?.message || '',
         serialPrefill: {
             product_id: initialPrefill.product_id ? String(initialPrefill.product_id) : '',
@@ -300,8 +303,7 @@ function warrantyWizard() {
             full_name: initialPrefill.full_name || '',
             mobile_number: initialPrefill.mobile_number || '',
             email: initialPrefill.email || '',
-        },
-        formatDate(value) {
+        },        formatDate(value) {
             if (!value) return '—';
             const date = new Date(`${value}T00:00:00`);
             if (Number.isNaN(date.getTime())) return value;
