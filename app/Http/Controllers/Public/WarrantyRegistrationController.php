@@ -17,13 +17,22 @@ use Illuminate\View\View;
 
 class WarrantyRegistrationController extends Controller
 {
-    public function __construct(protected WarrantyRegistrationService $registrationService) {}
+    public function __construct(
+        protected WarrantyRegistrationService $registrationService,
+        protected \App\Services\SettingsService $settingsService,
+    ) {}
 
     public function create(Request $request): View
     {
+        $brandShopSource = PurchaseSource::query()->where('code', 'brand_shop')->first();
+        $dealerSource = PurchaseSource::query()->where('code', 'dealer')->first();
+
         return view('public.register.index', [
             'purchaseSources' => PurchaseSource::query()->where('is_active', true)->orderBy('sort_order')->get(),
             'dealers' => Dealer::query()->where('is_active', true)->orderBy('name')->get(),
+            'brandShops' => $this->brandShopOptions(),
+            'brandShopSourceId' => $brandShopSource?->id,
+            'dealerSourceId' => $dealerSource?->id,
             'products' => Product::query()->where('is_active', true)->orderBy('name')->get(),
             'categories' => ProductCategory::query()->where('is_active', true)->orderBy('name')->get(),
             'prefill' => $request->session()->get('registration_prefill', []),
@@ -52,18 +61,29 @@ class WarrantyRegistrationController extends Controller
                 ->with('lookup_serial', $serial);
         }
 
+        $sale = is_array($result['odoo']['sale'] ?? null) ? $result['odoo']['sale'] : [];
+        $branchName = $this->normalizeBrandShopBranch($sale['branch_name'] ?? null);
+        $brandShopSource = PurchaseSource::query()->where('code', 'brand_shop')->first();
+        $hasPosSale = filled($sale['purchase_date'] ?? null)
+            || filled($sale['invoice_number'] ?? null)
+            || filled($sale['odoo_pos_order_id'] ?? null)
+            || filled($branchName);
+
         $prefill = [
             'serial_number' => $serial,
             'product_id' => $result['odoo']['product']['id'] ?? null,
             'product_name' => $result['odoo']['product']['name'] ?? null,
             'product_model' => $result['odoo']['product']['model'] ?? null,
             'product_category_id' => $result['odoo']['product']['category_id'] ?? null,
-            'purchase_date' => $result['odoo']['sale']['purchase_date'] ?? null,
-            'invoice_number' => $result['odoo']['sale']['invoice_number'] ?? null,
-            'branch_name' => $result['odoo']['sale']['branch_name'] ?? null,
+            'purchase_date' => $sale['purchase_date'] ?? null,
+            'invoice_number' => $sale['invoice_number'] ?? null,
+            'branch_name' => $branchName,
+            'purchase_source_id' => $hasPosSale ? $brandShopSource?->id : null,
             'full_name' => $result['odoo']['customer']['full_name'] ?? null,
             'mobile_number' => $result['odoo']['customer']['mobile_number'] ?? null,
             'email' => $result['odoo']['customer']['email'] ?? null,
+            'county' => $result['odoo']['customer']['county'] ?? null,
+            'town' => $result['odoo']['customer']['town'] ?? null,
         ];
 
         $prefill['product_id'] = $this->resolveLocalProductIdFromPrefill($prefill, $result);
@@ -160,5 +180,66 @@ class WarrantyRegistrationController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function brandShopOptions(): array
+    {
+        $fromSettings = collect(explode(',', (string) $this->settingsService->get('pos_brand_shop_branches', 'Sarin,CBD')))
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->values();
+
+        $fromDealers = Dealer::query()
+            ->where('is_active', true)
+            ->where(function ($query) {
+                $query->where('name', 'like', '%Brand Shop%')
+                    ->orWhereIn('dealer_code', ['SARIN', 'CBD']);
+            })
+            ->orderBy('name')
+            ->get(['name', 'physical_location', 'dealer_code'])
+            ->map(function (Dealer $dealer) {
+                return trim((string) ($dealer->physical_location ?: $dealer->dealer_code ?: $dealer->name));
+            })
+            ->filter();
+
+        return $fromSettings
+            ->merge($fromDealers)
+            ->map(fn ($value) => trim((string) $value))
+            ->filter()
+            ->unique(fn ($value) => strtolower($value))
+            ->values()
+            ->all();
+    }
+
+    protected function normalizeBrandShopBranch(?string $branch): ?string
+    {
+        $branch = trim((string) $branch);
+        if ($branch === '') {
+            return null;
+        }
+
+        foreach ($this->brandShopOptions() as $option) {
+            if (strcasecmp($branch, $option) === 0 || str_contains(strtolower($branch), strtolower($option))) {
+                return $option;
+            }
+        }
+
+        $dealer = Dealer::query()
+            ->where('is_active', true)
+            ->where(function ($query) use ($branch) {
+                $query->where('physical_location', 'like', '%'.$branch.'%')
+                    ->orWhere('dealer_code', strtoupper($branch))
+                    ->orWhere('name', 'like', '%'.$branch.'%');
+            })
+            ->first();
+
+        if ($dealer) {
+            return trim((string) ($dealer->physical_location ?: $dealer->dealer_code ?: $dealer->name));
+        }
+
+        return $branch;
     }
 }

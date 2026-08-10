@@ -43,9 +43,12 @@
         'purchase_date' => old('purchase_date', $prefill['purchase_date'] ?? ''),
         'invoice_number' => old('invoice_number', $prefill['invoice_number'] ?? ''),
         'branch_name' => old('branch_name', $prefill['branch_name'] ?? ''),
+        'purchase_source_id' => old('purchase_source_id', $prefill['purchase_source_id'] ?? ''),
         'full_name' => old('full_name', $prefill['full_name'] ?? ''),
         'mobile_number' => old('mobile_number', $prefill['mobile_number'] ?? ''),
         'email' => old('email', $prefill['email'] ?? ''),
+        'county' => old('county', $prefill['county'] ?? ''),
+        'town' => old('town', $prefill['town'] ?? ''),
     ];
 
     $serialValidatedInitially = in_array(($serialResult['status'] ?? ''), ['found', 'found_local'], true);
@@ -174,11 +177,11 @@
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">County (optional)</label>
-                        <input name="county" value="{{ old('county') }}" class="w-full rounded-lg border-slate-300">
+                        <input name="county" x-model="serialPrefill.county" value="{{ old('county', $prefill['county'] ?? '') }}" class="w-full rounded-lg border-slate-300">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Town / location (optional)</label>
-                        <input name="town" value="{{ old('town') }}" class="w-full rounded-lg border-slate-300">
+                        <input name="town" x-model="serialPrefill.town" value="{{ old('town', $prefill['town'] ?? '') }}" class="w-full rounded-lg border-slate-300">
                     </div>
                 </div>
                 <div class="mt-6 flex gap-3">
@@ -192,25 +195,34 @@
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div>
                         <label class="mb-1 block text-sm font-medium">Place of purchase</label>
-                        <select name="purchase_source_id" required class="w-full rounded-lg border-slate-300">
+                        <select name="purchase_source_id" x-model="purchaseSourceId" required class="w-full rounded-lg border-slate-300">
                             <option value="">Select source</option>
                             @foreach ($purchaseSources as $source)
-                                <option value="{{ $source->id }}" @selected(old('purchase_source_id') == $source->id)>{{ $source->name }}</option>
+                                <option value="{{ $source->id }}" @selected(old('purchase_source_id', $prefill['purchase_source_id'] ?? null) == $source->id)>{{ $source->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium">Dealer (if applicable)</label>
-                        <select name="dealer_id" class="w-full rounded-lg border-slate-300">
+                    <div x-show="isBrandShopSelected" x-cloak>
+                        <label class="mb-1 block text-sm font-medium">Brand Shop</label>
+                        <select name="branch_name" x-model="serialPrefill.branch_name" class="w-full rounded-lg border-slate-300" :disabled="!isBrandShopSelected">
+                            <option value="">Select Brand Shop</option>
+                            @foreach (($brandShops ?? []) as $shop)
+                                <option value="{{ $shop }}">{{ $shop }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div x-show="isDealerSelected" x-cloak>
+                        <label class="mb-1 block text-sm font-medium">Dealer</label>
+                        <select name="dealer_id" class="w-full rounded-lg border-slate-300" :disabled="!isDealerSelected">
                             <option value="">Select dealer</option>
                             @foreach ($dealers as $dealer)
                                 <option value="{{ $dealer->id }}" @selected(old('dealer_id') == $dealer->id)>{{ $dealer->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium">Branch / dealer name</label>
-                        <input name="branch_name" x-model="serialPrefill.branch_name" value="{{ old('branch_name', $prefill['branch_name'] ?? '') }}" class="w-full rounded-lg border-slate-300">
+                    <div x-show="!isBrandShopSelected && !isDealerSelected" x-cloak>
+                        <label class="mb-1 block text-sm font-medium">Branch / seller name</label>
+                        <input x-model="serialPrefill.branch_name" :name="(!isBrandShopSelected && !isDealerSelected) ? 'branch_name' : ''" value="{{ old('branch_name', $prefill['branch_name'] ?? '') }}" class="w-full rounded-lg border-slate-300" placeholder="Outlet or seller name" :disabled="isBrandShopSelected || isDealerSelected">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Purchase date</label>
@@ -292,6 +304,15 @@ function warrantyWizard() {
         serialError: '',
         serialValidated: @json($serialValidatedInitially),
         serialMessage: initialSerialResult?.message || '',
+        purchaseSourceId: initialPrefill.purchase_source_id ? String(initialPrefill.purchase_source_id) : '',
+        brandShopSourceId: @json(isset($brandShopSourceId) ? (string) $brandShopSourceId : ''),
+        dealerSourceId: @json(isset($dealerSourceId) ? (string) $dealerSourceId : ''),
+        get isBrandShopSelected() {
+            return String(this.purchaseSourceId || '') === String(this.brandShopSourceId || '') && this.brandShopSourceId !== '';
+        },
+        get isDealerSelected() {
+            return String(this.purchaseSourceId || '') === String(this.dealerSourceId || '') && this.dealerSourceId !== '';
+        },
         serialPrefill: {
             product_id: initialPrefill.product_id ? String(initialPrefill.product_id) : '',
             product_category_id: initialPrefill.product_category_id ? String(initialPrefill.product_category_id) : '',
@@ -303,7 +324,10 @@ function warrantyWizard() {
             full_name: initialPrefill.full_name || '',
             mobile_number: initialPrefill.mobile_number || '',
             email: initialPrefill.email || '',
-        },        formatDate(value) {
+            county: initialPrefill.county || '',
+            town: initialPrefill.town || '',
+        },
+        formatDate(value) {
             if (!value) return '—';
             const date = new Date(`${value}T00:00:00`);
             if (Number.isNaN(date.getTime())) return value;
@@ -315,6 +339,10 @@ function warrantyWizard() {
                 if (value === null || value === undefined || value === '') continue;
                 if (key === 'serial_number') {
                     this.serialNumber = String(value);
+                    continue;
+                }
+                if (key === 'purchase_source_id') {
+                    this.purchaseSourceId = String(value);
                     continue;
                 }
                 if (Object.prototype.hasOwnProperty.call(next, key)) {

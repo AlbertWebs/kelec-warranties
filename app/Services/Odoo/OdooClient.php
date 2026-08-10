@@ -154,6 +154,21 @@ class OdooClient
                 $sale = $this->findLatestPosSaleForProduct($uid, $productId);
             }
 
+            // Stock moves often have dates but no real partner details — enrich from POS when needed.
+            if (! $this->customerHasUsefulDetails(is_array($sale) ? ($sale['customer'] ?? null) : null)) {
+                $posSale = $this->findPosSaleBySerial($uid, $serialNumber);
+                if ((! is_array($posSale) || ! $this->customerHasUsefulDetails($posSale['customer'] ?? null)) && $productId > 0) {
+                    $latestPos = $this->findLatestPosSaleForProduct($uid, $productId);
+                    if (is_array($latestPos)) {
+                        $posSale = $this->mergeSaleDetails($posSale, $latestPos);
+                    }
+                }
+
+                if (is_array($posSale)) {
+                    $sale = $this->mergeSaleDetails($sale, $posSale);
+                }
+            }
+
             $customer = is_array($sale) ? ($sale['customer'] ?? null) : null;
             if (is_array($sale)) {
                 unset($sale['customer']);
@@ -349,18 +364,15 @@ class OdooClient
             }
 
             $move = $moves[0];
+            $ownerId = is_array($move['owner_id'] ?? null) ? (int) $move['owner_id'][0] : null;
+            $ownerLabel = is_array($move['owner_id'] ?? null) ? (string) $move['owner_id'][1] : null;
 
             return [
                 'purchase_date' => isset($move['date']) ? substr((string) $move['date'], 0, 10) : null,
                 'invoice_number' => $move['reference'] ?? null,
                 'branch_name' => is_array($move['location_dest_id'] ?? null) ? $move['location_dest_id'][1] : null,
                 'odoo_pos_order_id' => null,
-                'customer' => [
-                    'full_name' => is_array($move['owner_id'] ?? null) ? $move['owner_id'][1] : null,
-                    'mobile_number' => null,
-                    'email' => null,
-                    'odoo_customer_id' => is_array($move['owner_id'] ?? null) ? $move['owner_id'][0] : null,
-                ],
+                'customer' => $this->customerFromPartner($uid, $ownerId, $ownerLabel),
             ];
         } catch (Throwable $e) {
             $this->log('retrieve_sale', 'stock.move.line', 500, $e->getMessage(), 'failed', $serialNumber);
@@ -389,18 +401,15 @@ class OdooClient
 
             if ($moves !== []) {
                 $move = $moves[0];
+                $ownerId = is_array($move['owner_id'] ?? null) ? (int) $move['owner_id'][0] : null;
+                $ownerLabel = is_array($move['owner_id'] ?? null) ? (string) $move['owner_id'][1] : null;
 
                 return [
                     'purchase_date' => isset($move['date']) ? substr((string) $move['date'], 0, 10) : null,
                     'invoice_number' => $move['reference'] ?? null,
                     'branch_name' => is_array($move['location_dest_id'] ?? null) ? $move['location_dest_id'][1] : null,
                     'odoo_pos_order_id' => null,
-                    'customer' => [
-                        'full_name' => is_array($move['owner_id'] ?? null) ? $move['owner_id'][1] : null,
-                        'mobile_number' => null,
-                        'email' => null,
-                        'odoo_customer_id' => is_array($move['owner_id'] ?? null) ? $move['owner_id'][0] : null,
-                    ],
+                    'customer' => $this->customerFromPartner($uid, $ownerId, $ownerLabel),
                 ];
             }
         }
@@ -439,32 +448,17 @@ class OdooClient
 
         $order = $orders[0];
         $partnerId = is_array($order['partner_id'] ?? null) ? (int) $order['partner_id'][0] : null;
-        $customer = [
-            'full_name' => is_array($order['partner_id'] ?? null) ? (string) $order['partner_id'][1] : null,
-            'mobile_number' => null,
-            'email' => null,
-            'odoo_customer_id' => $partnerId,
-        ];
+        $partnerLabel = is_array($order['partner_id'] ?? null) ? (string) $order['partner_id'][1] : null;
 
-        if ($partnerId) {
-            try {
-                $partners = $this->executeKw($uid, 'res.partner', 'search_read', [
-                    [['id', '=', $partnerId]],
-                ], [
-                    'fields' => ['id', 'name', 'phone', 'mobile', 'email'],
-                    'limit' => 1,
-                ]);
-                if ($partners !== []) {
-                    $partner = $partners[0];
-                    $customer['full_name'] = $this->nullIfEmpty($partner['name'] ?? null) ?: $customer['full_name'];
-                    $customer['mobile_number'] = $this->nullIfEmpty($partner['mobile'] ?? null)
-                        ?: $this->nullIfEmpty($partner['phone'] ?? null);
-                    $customer['email'] = $this->nullIfEmpty($partner['email'] ?? null);
-                }
-            } catch (Throwable) {
-                // Keep basic partner name from the order.
+        // Fall back to the linked invoice partner when the POS order has no useful customer.
+        if ((! $partnerId || $this->isGenericPosPartnerName($partnerLabel)) && ! empty($order['account_move'])) {
+            $invoicePartner = $this->partnerIdFromAccountMove($uid, $order['account_move']);
+            if ($invoicePartner) {
+                $partnerId = $invoicePartner;
             }
         }
+
+        $customer = $this->customerFromPartner($uid, $partnerId, $partnerLabel);
 
         $invoice = $this->nullIfEmpty($order['pos_reference'] ?? null)
             ?: $this->nullIfEmpty($order['name'] ?? null);
@@ -478,13 +472,22 @@ class OdooClient
                 $moves = $this->executeKw($uid, 'account.move', 'search_read', [
                     [['id', '=', (int) $accountMove]],
                 ], [
-                    'fields' => ['id', 'name', 'ref'],
+                    'fields' => ['id', 'name', 'ref', 'partner_id'],
                     'limit' => 1,
                 ]);
                 if ($moves !== []) {
                     $invoice = $this->nullIfEmpty($moves[0]['name'] ?? null)
                         ?: $this->nullIfEmpty($moves[0]['ref'] ?? null)
                         ?: $invoice;
+
+                    if ((! $customer || $this->isGenericPosPartnerName($customer['full_name'] ?? null))
+                        && is_array($moves[0]['partner_id'] ?? null)) {
+                        $customer = $this->customerFromPartner(
+                            $uid,
+                            (int) $moves[0]['partner_id'][0],
+                            (string) ($moves[0]['partner_id'][1] ?? '')
+                        ) ?: $customer;
+                    }
                 }
             } catch (Throwable) {
                 // Keep POS reference/name.
@@ -501,6 +504,175 @@ class OdooClient
     }
 
     /**
+     * @return array{full_name: string|null, mobile_number: string|null, email: string|null, county: string|null, town: string|null, odoo_customer_id: int|null}|null
+     */
+    protected function customerFromPartner(int $uid, ?int $partnerId, ?string $fallbackName = null): ?array
+    {
+        if (! $partnerId || $partnerId <= 0) {
+            if ($this->isGenericPosPartnerName($fallbackName)) {
+                return null;
+            }
+
+            $name = $this->nullIfEmpty($fallbackName);
+            if (! $name) {
+                return null;
+            }
+
+            return [
+                'full_name' => $name,
+                'mobile_number' => null,
+                'email' => null,
+                'county' => null,
+                'town' => null,
+                'odoo_customer_id' => null,
+            ];
+        }
+
+        try {
+            $partners = $this->executeKw($uid, 'res.partner', 'search_read', [
+                [['id', '=', $partnerId]],
+            ], [
+                'fields' => ['id', 'name', 'phone', 'mobile', 'email', 'street', 'street2', 'city', 'state_id', 'zip', 'comment'],
+                'limit' => 1,
+            ]);
+        } catch (Throwable) {
+            try {
+                $partners = $this->executeKw($uid, 'res.partner', 'search_read', [
+                    [['id', '=', $partnerId]],
+                ], [
+                    'fields' => ['id', 'name', 'phone', 'mobile', 'email', 'city'],
+                    'limit' => 1,
+                ]);
+            } catch (Throwable) {
+                $partners = [];
+            }
+        }
+
+        if ($partners === []) {
+            if ($this->isGenericPosPartnerName($fallbackName)) {
+                return null;
+            }
+
+            return [
+                'full_name' => $this->nullIfEmpty($fallbackName),
+                'mobile_number' => null,
+                'email' => null,
+                'county' => null,
+                'town' => null,
+                'odoo_customer_id' => $partnerId,
+            ];
+        }
+
+        $partner = $partners[0];
+        $fullName = $this->nullIfEmpty($partner['name'] ?? null) ?: $this->nullIfEmpty($fallbackName);
+        if ($this->isGenericPosPartnerName($fullName)) {
+            return null;
+        }
+
+        $mobile = $this->nullIfEmpty($partner['mobile'] ?? null)
+            ?: $this->nullIfEmpty($partner['phone'] ?? null);
+        $county = is_array($partner['state_id'] ?? null)
+            ? $this->nullIfEmpty($partner['state_id'][1] ?? null)
+            : null;
+        $town = $this->nullIfEmpty($partner['city'] ?? null);
+
+        return [
+            'full_name' => $fullName,
+            'mobile_number' => $mobile,
+            'email' => $this->nullIfEmpty($partner['email'] ?? null),
+            'county' => $county,
+            'town' => $town,
+            'odoo_customer_id' => $partnerId,
+        ];
+    }
+
+    protected function partnerIdFromAccountMove(int $uid, mixed $accountMove): ?int
+    {
+        $moveId = null;
+        if (is_array($accountMove) && isset($accountMove[0])) {
+            $moveId = (int) $accountMove[0];
+        } elseif (is_numeric($accountMove)) {
+            $moveId = (int) $accountMove;
+        }
+
+        if (! $moveId) {
+            return null;
+        }
+
+        try {
+            $moves = $this->executeKw($uid, 'account.move', 'search_read', [
+                [['id', '=', $moveId]],
+            ], [
+                'fields' => ['id', 'partner_id'],
+                'limit' => 1,
+            ]);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($moves === [] || ! is_array($moves[0]['partner_id'] ?? null)) {
+            return null;
+        }
+
+        return (int) $moves[0]['partner_id'][0];
+    }
+
+    protected function isGenericPosPartnerName(?string $name): bool
+    {
+        $normalized = strtolower(trim((string) $name));
+        if ($normalized === '') {
+            return true;
+        }
+
+        $exact = [
+            'customer',
+            'guest',
+            'public',
+            'anonymous',
+        ];
+
+        if (in_array($normalized, $exact, true)) {
+            return true;
+        }
+
+        $partials = [
+            'walk-in',
+            'walk in',
+            'walking customer',
+            'pos customer',
+            'cash customer',
+            'retail customer',
+            'walk-in customer',
+        ];
+
+        foreach ($partials as $partial) {
+            if (str_contains($normalized, $partial)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $customer
+     */
+    protected function customerHasUsefulDetails(?array $customer): bool
+    {
+        if (! is_array($customer)) {
+            return false;
+        }
+
+        if ($this->isGenericPosPartnerName($customer['full_name'] ?? null)) {
+            return false;
+        }
+
+        return filled($customer['full_name'] ?? null)
+            || filled($customer['mobile_number'] ?? null)
+            || filled($customer['email'] ?? null);
+    }
+
+    /**
      * @param  array<string, mixed>|null  $sale
      */
     protected function saleHasDetails(?array $sale): bool
@@ -510,6 +682,36 @@ class OdooClient
         }
 
         return filled($sale['purchase_date'] ?? null) || filled($sale['invoice_number'] ?? null);
+    }
+
+    /**
+     * Prefer filled fields from $preferred while keeping any existing values from $base.
+     *
+     * @param  array<string, mixed>|null  $base
+     * @param  array<string, mixed>  $preferred
+     * @return array<string, mixed>
+     */
+    protected function mergeSaleDetails(?array $base, array $preferred): array
+    {
+        if (! is_array($base)) {
+            return $preferred;
+        }
+
+        $merged = $base;
+        foreach (['purchase_date', 'invoice_number', 'branch_name', 'odoo_pos_order_id'] as $field) {
+            if (filled($preferred[$field] ?? null)) {
+                $merged[$field] = $preferred[$field];
+            }
+        }
+
+        $preferredCustomer = is_array($preferred['customer'] ?? null) ? $preferred['customer'] : null;
+        if ($this->customerHasUsefulDetails($preferredCustomer)) {
+            $merged['customer'] = $preferredCustomer;
+        } elseif (! array_key_exists('customer', $merged)) {
+            $merged['customer'] = $preferredCustomer;
+        }
+
+        return $merged;
     }
 
     /**
@@ -750,6 +952,8 @@ class OdooClient
                 'full_name' => str_starts_with($normalized, 'MOCK-CUST') ? 'Mock Prefill Customer' : null,
                 'mobile_number' => str_starts_with($normalized, 'MOCK-CUST') ? '0711111111' : null,
                 'email' => str_starts_with($normalized, 'MOCK-CUST') ? 'mock@example.com' : null,
+                'county' => str_starts_with($normalized, 'MOCK-CUST') ? 'Nairobi' : null,
+                'town' => str_starts_with($normalized, 'MOCK-CUST') ? 'Westlands' : null,
                 'odoo_customer_id' => str_starts_with($normalized, 'MOCK-CUST') ? 'MOCK-C-1' : null,
             ],
         ];

@@ -43,6 +43,20 @@ class SerialCheckAjaxTest extends TestCase
             ->assertJsonPath('prefill.serial_number', 'AJAX-SERIAL-1');
     }
 
+    public function test_ajax_serial_check_prefills_customer_details_from_odoo_mock(): void
+    {
+        $this->postJson(route('register-warranty.serial-check'), [
+            'serial_number' => 'MOCK-CUST-123',
+        ])
+            ->assertOk()
+            ->assertJsonPath('validated', true)
+            ->assertJsonPath('prefill.full_name', 'Mock Prefill Customer')
+            ->assertJsonPath('prefill.mobile_number', '0711111111')
+            ->assertJsonPath('prefill.email', 'mock@example.com')
+            ->assertJsonPath('prefill.county', 'Nairobi')
+            ->assertJsonPath('prefill.town', 'Westlands');
+    }
+
     public function test_ajax_serial_check_redirects_existing_active_warranty(): void
     {
         Warranty::factory()->create([
