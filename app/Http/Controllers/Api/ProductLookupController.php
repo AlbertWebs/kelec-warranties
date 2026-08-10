@@ -19,28 +19,30 @@ class ProductLookupController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => $result['message'],
+                'is_registered' => $result['is_registered'] ?? false,
+                'can_register' => ! ($result['odoo_unavailable'] ?? false),
             ], $status);
         }
 
         $product = $result['product'];
+        $isRegistered = (bool) ($result['is_registered'] ?? false);
 
         return response()->json([
             'success' => true,
             'source' => $result['source'] ?? 'local',
             'message' => $result['message'],
+            'is_registered' => $isRegistered,
+            'can_register' => ! $isRegistered,
+            'warranty_reference' => $result['warranty_reference'] ?? null,
             'product' => [
                 'id' => $product->id,
-                'odoo_id' => $product->odoo_id,
                 'name' => $product->customerFacingName(),
-                'default_code' => $product->default_code,
-                'barcode' => $product->barcode,
-                'serial_number' => $product->serial_number,
-                'brand_name' => $product->brand_name ?: $product->brand,
+                'model' => $product->model ?: $product->default_code ?: $product->sku,
                 'category_name' => $product->category_name ?: $product->category?->name,
-                'tracking' => $product->tracking,
-                'last_synced_at' => optional($product->last_synced_at)?->toIso8601String(),
+                'purchase_date' => $result['purchase_date'] ?? null,
+                'serial_number' => $product->serial_number,
+                'barcode' => $product->barcode,
             ],
         ]);
     }
 }
-

@@ -154,6 +154,7 @@ class OdooProductService
             'sku' => $defaultCode,
             'barcode' => $barcode,
             'serial_number' => $barcode,
+            'model' => $defaultCode,
             'product_type' => $this->nullIfEmpty($odooProduct['type'] ?? null),
             'category_id' => $category['id'],
             'category_name' => $category['name'],
@@ -214,12 +215,26 @@ class OdooProductService
 
     /**
      * @param  array<int, mixed>  $args
+     * @param  array<string, mixed>  $kwargs
      * @return array<int, mixed>|array<string, mixed>|null
      */
-    protected function executeKw(string $model, string $method, array $args): array|null
+    protected function executeKw(string $model, string $method, array $args, array $kwargs = []): array|null
     {
         $uid = $this->authenticate();
         $config = $this->config();
+
+        $rpcArgs = [
+            $config['database'],
+            $uid,
+            $config['password'],
+            $model,
+            $method,
+            $args,
+        ];
+
+        if ($kwargs !== []) {
+            $rpcArgs[] = $kwargs;
+        }
 
         $payload = [
             'jsonrpc' => '2.0',
@@ -227,14 +242,7 @@ class OdooProductService
             'params' => [
                 'service' => 'object',
                 'method' => 'execute_kw',
-                'args' => [
-                    $config['database'],
-                    $uid,
-                    $config['password'],
-                    $model,
-                    $method,
-                    $args,
-                ],
+                'args' => $rpcArgs,
             ],
             'id' => time(),
         ];
@@ -245,7 +253,9 @@ class OdooProductService
         }
 
         if ($response->json('error')) {
-            $message = $response->json('error.message') ?? $response->json('error.data.message') ?? 'Unknown Odoo error';
+            $message = $response->json('error.data.message')
+                ?? $response->json('error.message')
+                ?? 'Unknown Odoo error';
             throw new RuntimeException('Odoo API error: '.$message);
         }
 
@@ -365,25 +375,62 @@ class OdooProductService
      */
     protected function findProductBySerialLot(string $serial): ?array
     {
+        $serial = trim($serial);
+        if ($serial === '') {
+            return null;
+        }
+
+        $candidates = array_values(array_unique(array_filter([
+            $serial,
+            strtoupper($serial),
+            strtolower($serial),
+        ])));
+
         foreach (['stock.lot', 'stock.production.lot'] as $lotModel) {
+            foreach ($candidates as $candidate) {
+                try {
+                    $lots = $this->executeKw($lotModel, 'search_read', [
+                        [['name', '=', $candidate]],
+                    ], [
+                        'fields' => ['id', 'name', 'product_id'],
+                        'limit' => 1,
+                        'order' => 'id desc',
+                    ]);
+                } catch (\Throwable) {
+                    continue;
+                }
+
+                if (! is_array($lots) || ! isset($lots[0])) {
+                    continue;
+                }
+
+                $productId = is_array($lots[0]['product_id'] ?? null) ? (int) ($lots[0]['product_id'][0] ?? 0) : 0;
+                if ($productId <= 0) {
+                    continue;
+                }
+
+                return $this->fetchSingleProduct($productId);
+            }
+        }
+
+        foreach ($candidates as $candidate) {
             try {
-                $lots = $this->executeKw($lotModel, 'search_read', [
-                    [['name', '=', $serial]],
-                    ['id', 'name', 'product_id'],
-                    0,
-                    1,
-                    'id asc',
+                $rows = $this->executeKw('pos.pack.operation.lot', 'search_read', [
+                    [['lot_name', '=', $candidate]],
+                ], [
+                    'fields' => ['id', 'lot_name', 'product_id'],
+                    'limit' => 1,
+                    'order' => 'id desc',
                 ]);
             } catch (\Throwable) {
-                // Older/newer Odoo installs use different lot model names.
                 continue;
             }
 
-            if (! is_array($lots) || ! isset($lots[0])) {
+            if (! is_array($rows) || ! isset($rows[0])) {
                 continue;
             }
 
-            $productId = is_array($lots[0]['product_id'] ?? null) ? (int) ($lots[0]['product_id'][0] ?? 0) : 0;
+            $productId = is_array($rows[0]['product_id'] ?? null) ? (int) ($rows[0]['product_id'][0] ?? 0) : 0;
             if ($productId <= 0) {
                 continue;
             }

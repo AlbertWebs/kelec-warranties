@@ -23,9 +23,17 @@
         </form>
     </div>
 
-    <div x-show="error" x-transition class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        <p x-text="error"></p>
-        <button type="button" @click="lookup" class="mt-2 text-sm font-semibold underline underline-offset-2" x-show="query && !loading">Retry</button>
+    <div x-show="error" x-transition class="mt-4 overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
+        <div class="border-b border-red-100 bg-red-50 px-5 py-4 sm:px-6">
+            <p class="text-sm text-red-700" x-text="error"></p>
+            <button type="button" @click="lookup" class="mt-2 text-sm font-semibold text-red-800 underline underline-offset-2" x-show="query && !loading">Retry</button>
+        </div>
+        <div x-show="canRegister" class="bg-slate-50/70 px-5 py-4 sm:px-6">
+            <p class="text-sm text-slate-600">This product is not registered for warranty yet.</p>
+            <a :href="registerUrl" class="btn-brand mt-3 inline-flex w-full items-center justify-center px-4 py-2.5 text-sm sm:w-auto">
+                Register warranty
+            </a>
+        </div>
     </div>
 
     <div x-show="product" x-cloak x-transition class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -37,25 +45,41 @@
             </div>
             <p class="mt-3 text-xs font-semibold uppercase tracking-wider text-green-700">Product found</p>
             <h2 class="mt-1 text-xl font-bold tracking-tight text-brand-ink sm:text-2xl" x-text="product?.name"></h2>
-            <p class="mt-1 text-sm text-slate-600" x-show="product?.brand_name || product?.category_name">
-                <span x-text="product?.brand_name || 'K-Elec'"></span>
-                <span x-show="product?.category_name"> · <span x-text="product?.category_name"></span></span>
-            </p>
         </div>
 
-        <dl class="grid gap-0 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-y-0">
-            <template x-for="field in visibleFields" :key="field.label">
-                <div class="px-5 py-4 sm:border-b sm:border-slate-100 sm:px-6">
-                    <dt class="text-xs font-medium uppercase tracking-wide text-slate-500" x-text="field.label"></dt>
-                    <dd class="mt-1 text-sm font-semibold text-brand-ink" :class="field.mono ? 'font-mono tracking-wide' : ''" x-text="field.value"></dd>
-                </div>
-            </template>
+        <dl class="divide-y divide-slate-100">
+            <div class="px-5 py-4 sm:px-6">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Product name</dt>
+                <dd class="mt-1 text-sm font-semibold text-brand-ink" x-text="product?.name || '—'"></dd>
+            </div>
+            <div class="px-5 py-4 sm:px-6">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Model</dt>
+                <dd class="mt-1 font-mono text-sm font-semibold tracking-wide text-brand-ink" x-text="product?.model || '—'"></dd>
+            </div>
+            <div class="px-5 py-4 sm:px-6">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Category</dt>
+                <dd class="mt-1 text-sm font-semibold text-brand-ink" x-text="product?.category_name || '—'"></dd>
+            </div>
+            <div class="px-5 py-4 sm:px-6">
+                <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Date of purchase</dt>
+                <dd class="mt-1 text-sm font-semibold text-brand-ink" x-text="formatPurchaseDate(product?.purchase_date)"></dd>
+            </div>
         </dl>
 
-        <div class="border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
-            <p class="text-sm text-slate-600">Ready to protect this appliance?</p>
+        <div x-show="canRegister" class="border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
+            <p class="text-sm text-slate-600">This product is not registered for warranty yet.</p>
             <a :href="registerUrl" class="btn-brand mt-3 inline-flex w-full items-center justify-center px-4 py-2.5 text-sm sm:w-auto">
                 Register warranty
+            </a>
+        </div>
+
+        <div x-show="isRegistered" class="border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
+            <p class="text-sm text-slate-600">
+                This product already has a warranty registration
+                <span x-show="warrantyReference"> (<span class="font-semibold text-brand-ink" x-text="warrantyReference"></span>)</span>.
+            </p>
+            <a href="{{ route('warranty.lookup') }}" class="btn-brand mt-3 inline-flex w-full items-center justify-center px-4 py-2.5 text-sm sm:w-auto">
+                Look up warranty
             </a>
         </div>
     </div>
@@ -68,37 +92,33 @@ function productLookup() {
         loading: false,
         error: '',
         product: null,
-        get visibleFields() {
-            if (!this.product) return [];
-
-            const fields = [
-                { label: 'SKU / reference', value: this.product.default_code, mono: true },
-                { label: 'Barcode', value: this.product.barcode, mono: true },
-                { label: 'Serial number', value: this.product.serial_number, mono: true },
-                { label: 'Brand', value: this.product.brand_name || 'K-Elec' },
-                { label: 'Category', value: this.product.category_name },
-                {
-                    label: 'Tracking',
-                    value: this.product.tracking
-                        ? this.product.tracking.charAt(0).toUpperCase() + this.product.tracking.slice(1)
-                        : null,
-                },
-            ];
-
-            return fields.filter((field) => field.value);
-        },
+        isRegistered: false,
+        canRegister: false,
+        warrantyReference: '',
         get registerUrl() {
             const base = @json(route('register-warranty.create'));
-            const serial = this.product?.serial_number || this.product?.barcode || '';
+            const serial = this.product?.serial_number || this.product?.barcode || this.query.trim();
             return serial ? `${base}?serial=${encodeURIComponent(serial)}` : base;
+        },
+        formatPurchaseDate(value) {
+            if (!value) return '—';
+            const date = new Date(`${value}T00:00:00`);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        },
+        resetResultState() {
+            this.error = '';
+            this.product = null;
+            this.isRegistered = false;
+            this.canRegister = false;
+            this.warrantyReference = '';
         },
         async lookup() {
             const search = this.query.trim();
             if (!search || this.loading) return;
 
             this.loading = true;
-            this.error = '';
-            this.product = null;
+            this.resetResultState();
 
             try {
                 const response = await fetch('{{ route('api.products.lookup') }}', {
@@ -110,12 +130,17 @@ function productLookup() {
 
                 if (!response.ok || !payload.success) {
                     this.error = payload.message || 'We could not find a product matching the information provided.';
+                    this.canRegister = Boolean(payload.can_register);
                     return;
                 }
 
                 this.product = payload.product;
+                this.isRegistered = Boolean(payload.is_registered);
+                this.canRegister = Boolean(payload.can_register);
+                this.warrantyReference = payload.warranty_reference || '';
             } catch (e) {
                 this.error = 'We could not complete the product lookup at the moment. Please try again shortly.';
+                this.canRegister = false;
             } finally {
                 this.loading = false;
             }
