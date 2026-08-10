@@ -51,59 +51,84 @@ class WarrantyRegistrationService
         }
 
         $localProduct = $this->findLocalProductBySerial($originalSerial);
+        $odoo = null;
+
+        try {
+            // Always ask Odoo for lot/POS sale details when possible, even if the product is cached locally.
+            $odoo = $this->odooProductService->lookupBySerial($originalSerial !== '' ? $originalSerial : $serialNumber);
+        } catch (Throwable $e) {
+            if (! $localProduct) {
+                IntegrationFailure::create([
+                    'integration' => 'odoo',
+                    'action' => 'validate_serial',
+                    'error_message' => $e->getMessage(),
+                    'status' => 'pending',
+                    'payload' => ['serial_number' => $serialNumber],
+                    'next_retry_at' => now()->addMinutes(15),
+                ]);
+
+                return [
+                    'status' => 'odoo_unavailable',
+                    'message' => 'We are currently unable to verify the product automatically. Your registration can still be saved and will be reviewed by the K-Elec team.',
+                    'odoo' => ['found' => false, 'error' => true],
+                ];
+            }
+        }
+
         if ($localProduct) {
+            $odooProduct = is_array($odoo['product'] ?? null) ? $odoo['product'] : [];
+            $odooSale = is_array($odoo['sale'] ?? null) ? $odoo['sale'] : [];
+            $odooCustomer = is_array($odoo['customer'] ?? null) ? $odoo['customer'] : [];
+
+            $model = $localProduct->model
+                ?: $localProduct->default_code
+                ?: $localProduct->sku
+                ?: ($odooProduct['model'] ?? null)
+                ?: $localProduct->customerFacingName();
+
+            $hasSaleDetails = filled($odooSale['purchase_date'] ?? null) || filled($odooSale['invoice_number'] ?? null);
+            $message = 'Serial number validated successfully.';
+            if (is_array($odoo) && ! $hasSaleDetails) {
+                $message = 'Product found. Sale details were not automatically retrieved from Odoo, so please confirm purchase information.';
+            }
+
             return [
                 'status' => 'found_local',
-                'message' => 'Serial number validated successfully.',
+                'message' => $message,
                 'odoo' => [
                     'source' => 'local',
                     'found' => true,
                     'product' => [
                         'id' => $localProduct->id,
-                        'odoo_product_id' => $localProduct->odoo_product_id ?: $localProduct->odoo_id,
-                        'name' => $localProduct->customerFacingName(),
-                        'model' => $localProduct->model ?: $localProduct->default_code ?: $localProduct->sku,
-                        'category_id' => $localProduct->product_category_id,
+                        'odoo_product_id' => $localProduct->odoo_product_id ?: $localProduct->odoo_id ?: ($odooProduct['odoo_product_id'] ?? null),
+                        'name' => $localProduct->customerFacingName() ?: ($odooProduct['name'] ?? null),
+                        'model' => $model,
+                        'category_id' => $localProduct->product_category_id ?: ($odooProduct['category_id'] ?? null),
                     ],
-                    'sale' => [],
-                    'customer' => [],
+                    'sale' => [
+                        'purchase_date' => $odooSale['purchase_date'] ?? null,
+                        'invoice_number' => $odooSale['invoice_number'] ?? null,
+                        'branch_name' => $odooSale['branch_name'] ?? null,
+                        'odoo_pos_order_id' => $odooSale['odoo_pos_order_id'] ?? null,
+                    ],
+                    'customer' => $odooCustomer,
                 ],
             ];
         }
 
-        try {
-            // Prefer the original casing for Odoo lookups; internal warranty keys stay uppercased.
-            $odoo = $this->odooProductService->lookupBySerial($originalSerial !== '' ? $originalSerial : $serialNumber);
-
-            if (! ($odoo['found'] ?? false)) {
-                return [
-                    'status' => 'not_found',
-                    'message' => 'We could not automatically locate this serial number in our sales records. You can continue with the registration, and the K-Elec team will verify the product.',
-                    'odoo' => $odoo,
-                ];
-            }
-
+        if (! ($odoo['found'] ?? false)) {
             return [
-                'status' => 'found',
-                'message' => 'Serial number validated successfully.',
-                'odoo' => $odoo,
-            ];
-        } catch (Throwable $e) {
-            IntegrationFailure::create([
-                'integration' => 'odoo',
-                'action' => 'validate_serial',
-                'error_message' => $e->getMessage(),
-                'status' => 'pending',
-                'payload' => ['serial_number' => $serialNumber],
-                'next_retry_at' => now()->addMinutes(15),
-            ]);
-
-            return [
-                'status' => 'odoo_unavailable',
-                'message' => 'We are currently unable to verify the product automatically. Your registration can still be saved and will be reviewed by the K-Elec team.',
-                'odoo' => ['found' => false, 'error' => true],
+                'status' => 'not_found',
+                'message' => 'We could not automatically locate this serial number in our sales records. You can continue with the registration, and the K-Elec team will verify the product.',
+                'odoo' => $odoo ?? ['found' => false],
             ];
         }
+
+        return [
+            'status' => 'found',
+            'message' => 'Serial number validated successfully.',
+            'odoo' => $odoo,
+        ];
     }
 
     /**

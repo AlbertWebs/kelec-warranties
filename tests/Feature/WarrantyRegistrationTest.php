@@ -218,6 +218,13 @@ class WarrantyRegistrationTest extends TestCase
         $settings->set('odoo_mock_mode', false, 'odoo', 'boolean');
         $settings->set('odoo_enabled', true, 'odoo', 'boolean');
 
+        $mock = \Mockery::mock(\App\Services\Odoo\OdooProductService::class);
+        $mock->shouldReceive('lookupBySerial')->andReturn([
+            'found' => false,
+            'message' => 'Serial number not found in Odoo.',
+        ]);
+        app()->instance(\App\Services\Odoo\OdooProductService::class, $mock);
+
         $source = PurchaseSource::where('code', 'brand_shop')->firstOrFail();
         $product = Product::firstOrFail();
         $product->update([
@@ -238,6 +245,6 @@ class WarrantyRegistrationTest extends TestCase
         $warranty = Warranty::latest()->firstOrFail();
         $this->assertEquals(WarrantyStatus::Active, $warranty->status);
         $this->assertTrue($warranty->odoo_validated);
-        $this->assertEquals('Serial number validated successfully.', (string) $warranty->odoo_validation_message);
+        $this->assertStringContainsString('Product found', (string) $warranty->odoo_validation_message);
     }
 }

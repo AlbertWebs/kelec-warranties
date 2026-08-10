@@ -46,7 +46,7 @@ class OdooProductService
                     'odoo_product_id' => $product->odoo_product_id ?: $product->odoo_id,
                     'odoo_serial_id' => null,
                     'name' => $product->customerFacingName(),
-                    'model' => $product->model ?: $product->default_code ?: $product->sku,
+                    'model' => $product->model ?: $product->default_code ?: $product->sku ?: $product->customerFacingName(),
                     'category_id' => $product->product_category_id,
                 ],
                 'sale' => [

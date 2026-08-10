@@ -125,15 +125,33 @@ class OdooClient
             $uid = $this->authenticate();
             $match = $this->findSerialMatch($uid, $serialNumber);
 
+            // If the entered value is a product code/barcode (common for TVs), resolve the product
+            // and pull the latest POS sale for that product.
             if ($match === null) {
-                $this->log('validate_serial', 'stock.lot|pos.pack.operation.lot', 404, 'Serial not found', 'not_found', $serialNumber);
+                $match = $this->findProductCodeMatch($uid, $serialNumber);
+            }
+
+            if ($match === null) {
+                $this->log('validate_serial', 'stock.lot|pos.pack.operation.lot|product.product', 404, 'Serial not found', 'not_found', $serialNumber);
 
                 return ['found' => false, 'message' => 'Serial number not found in Odoo.'];
             }
 
-            $sale = $match['sale'] ?? $this->findSaleForLot($uid, (int) ($match['lot_id'] ?? 0), $serialNumber);
-            if ($sale === null) {
+            $productId = (int) ($match['product_id'] ?? 0);
+            $productDetails = $productId > 0 ? $this->fetchProductDetails($uid, $productId) : null;
+
+            $sale = $match['sale'] ?? null;
+            if (! $this->saleHasDetails($sale)) {
+                $sale = $this->findSaleForLot($uid, (int) ($match['lot_id'] ?? 0), $serialNumber);
+            }
+            if (! $this->saleHasDetails($sale)) {
                 $sale = $this->findSaleBySerialName($uid, $serialNumber);
+            }
+            if (! $this->saleHasDetails($sale)) {
+                $sale = $this->findPosSaleBySerial($uid, $serialNumber);
+            }
+            if (! $this->saleHasDetails($sale) && $productId > 0) {
+                $sale = $this->findLatestPosSaleForProduct($uid, $productId);
             }
 
             $customer = is_array($sale) ? ($sale['customer'] ?? null) : null;
@@ -141,16 +159,27 @@ class OdooClient
                 unset($sale['customer']);
             }
 
+            $model = $this->nullIfEmpty($match['model'] ?? null)
+                ?: $this->nullIfEmpty($productDetails['default_code'] ?? null)
+                ?: $this->nullIfEmpty($productDetails['barcode'] ?? null)
+                ?: $this->nullIfEmpty($productDetails['name'] ?? null)
+                ?: $this->nullIfEmpty($match['product_name'] ?? null);
+
+            $name = $this->nullIfEmpty($productDetails['display_name'] ?? null)
+                ?: $this->nullIfEmpty($productDetails['name'] ?? null)
+                ?: $this->nullIfEmpty($match['product_name'] ?? null)
+                ?: $model;
+
             $this->log('validate_serial', $match['source'], 200, null, 'success', $serialNumber);
 
             return [
                 'found' => true,
                 'message' => 'Serial number validated against Odoo.',
                 'product' => [
-                    'odoo_product_id' => $match['product_id'] ?? null,
+                    'odoo_product_id' => $productId > 0 ? $productId : ($match['product_id'] ?? null),
                     'odoo_serial_id' => $match['lot_id'] ?? null,
-                    'name' => $match['product_name'] ?? null,
-                    'model' => $match['model'] ?? null,
+                    'name' => $name,
+                    'model' => $model,
                 ],
                 'sale' => $sale,
                 'customer' => $customer,
@@ -276,6 +305,7 @@ class OdooClient
 
         $row = $rows[0];
         $orderId = is_array($row['order_id'] ?? null) ? (int) $row['order_id'][0] : 0;
+        $productId = is_array($row['product_id'] ?? null) ? (int) $row['product_id'][0] : null;
         $sale = $orderId > 0 ? $this->saleFromPosOrder($uid, $orderId) : [
             'purchase_date' => isset($row['create_date']) ? substr((string) $row['create_date'], 0, 10) : null,
             'invoice_number' => null,
@@ -284,12 +314,14 @@ class OdooClient
             'customer' => null,
         ];
 
+        $details = $productId ? $this->fetchProductDetails($uid, $productId) : null;
+
         return [
             'source' => 'pos.pack.operation.lot',
             'lot_id' => isset($row['id']) ? (int) $row['id'] : null,
-            'product_id' => is_array($row['product_id'] ?? null) ? (int) $row['product_id'][0] : null,
+            'product_id' => $productId,
             'product_name' => is_array($row['product_id'] ?? null) ? (string) $row['product_id'][1] : null,
-            'model' => null,
+            'model' => $details['default_code'] ?? $details['barcode'] ?? null,
             'sale' => $sale,
         ];
     }
@@ -385,11 +417,20 @@ class OdooClient
             $orders = $this->executeKw($uid, 'pos.order', 'search_read', [
                 [['id', '=', $orderId]],
             ], [
-                'fields' => ['id', 'name', 'date_order', 'partner_id', 'pos_reference', 'config_id'],
+                'fields' => ['id', 'name', 'date_order', 'partner_id', 'pos_reference', 'config_id', 'account_move'],
                 'limit' => 1,
             ]);
         } catch (Throwable) {
-            return null;
+            try {
+                $orders = $this->executeKw($uid, 'pos.order', 'search_read', [
+                    [['id', '=', $orderId]],
+                ], [
+                    'fields' => ['id', 'name', 'date_order', 'partner_id', 'pos_reference', 'config_id'],
+                    'limit' => 1,
+                ]);
+            } catch (Throwable) {
+                return null;
+            }
         }
 
         if ($orders === []) {
@@ -425,13 +466,226 @@ class OdooClient
             }
         }
 
+        $invoice = $this->nullIfEmpty($order['pos_reference'] ?? null)
+            ?: $this->nullIfEmpty($order['name'] ?? null);
+
+        // Prefer linked accounting invoice/receipt number when available.
+        $accountMove = $order['account_move'] ?? null;
+        if (is_array($accountMove) && ! empty($accountMove[1])) {
+            $invoice = (string) $accountMove[1];
+        } elseif (is_numeric($accountMove) && (int) $accountMove > 0) {
+            try {
+                $moves = $this->executeKw($uid, 'account.move', 'search_read', [
+                    [['id', '=', (int) $accountMove]],
+                ], [
+                    'fields' => ['id', 'name', 'ref'],
+                    'limit' => 1,
+                ]);
+                if ($moves !== []) {
+                    $invoice = $this->nullIfEmpty($moves[0]['name'] ?? null)
+                        ?: $this->nullIfEmpty($moves[0]['ref'] ?? null)
+                        ?: $invoice;
+                }
+            } catch (Throwable) {
+                // Keep POS reference/name.
+            }
+        }
+
         return [
             'purchase_date' => isset($order['date_order']) ? substr((string) $order['date_order'], 0, 10) : null,
-            'invoice_number' => $this->nullIfEmpty($order['pos_reference'] ?? null) ?: $this->nullIfEmpty($order['name'] ?? null),
+            'invoice_number' => $invoice,
             'branch_name' => is_array($order['config_id'] ?? null) ? (string) $order['config_id'][1] : null,
             'odoo_pos_order_id' => (string) $orderId,
             'customer' => $customer,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $sale
+     */
+    protected function saleHasDetails(?array $sale): bool
+    {
+        if (! is_array($sale)) {
+            return false;
+        }
+
+        return filled($sale['purchase_date'] ?? null) || filled($sale['invoice_number'] ?? null);
+    }
+
+    /**
+     * @return array{source: string, lot_id: int|null, product_id: int|null, product_name: string|null, model: string|null, sale?: array<string, mixed>|null}|null
+     */
+    protected function findProductCodeMatch(int $uid, string $serialNumber): ?array
+    {
+        foreach ($this->serialCandidates($serialNumber) as $candidate) {
+            foreach (['default_code', 'barcode', 'name'] as $field) {
+                try {
+                    $products = $this->executeKw($uid, 'product.product', 'search_read', [
+                        [[$field, '=', $candidate]],
+                    ], [
+                        'fields' => ['id', 'name', 'display_name', 'default_code', 'barcode'],
+                        'limit' => 1,
+                        'order' => 'id desc',
+                    ]);
+                } catch (Throwable) {
+                    $products = [];
+                }
+
+                if ($products === []) {
+                    continue;
+                }
+
+                $product = $products[0];
+                $productId = (int) ($product['id'] ?? 0);
+                $sale = $productId > 0 ? $this->findLatestPosSaleForProduct($uid, $productId) : null;
+
+                return [
+                    'source' => 'product.product',
+                    'lot_id' => null,
+                    'product_id' => $productId > 0 ? $productId : null,
+                    'product_name' => $this->nullIfEmpty($product['display_name'] ?? null) ?: $this->nullIfEmpty($product['name'] ?? null),
+                    'model' => $this->nullIfEmpty($product['default_code'] ?? null) ?: $this->nullIfEmpty($product['barcode'] ?? null),
+                    'sale' => $sale,
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{id: int, name: string|null, display_name: string|null, default_code: string|null, barcode: string|null}|null
+     */
+    protected function fetchProductDetails(int $uid, int $productId): ?array
+    {
+        if ($productId <= 0) {
+            return null;
+        }
+
+        try {
+            $products = $this->executeKw($uid, 'product.product', 'search_read', [
+                [['id', '=', $productId]],
+            ], [
+                'fields' => ['id', 'name', 'display_name', 'default_code', 'barcode'],
+                'limit' => 1,
+            ]);
+        } catch (Throwable) {
+            return null;
+        }
+
+        if ($products === []) {
+            return null;
+        }
+
+        $product = $products[0];
+
+        return [
+            'id' => (int) $product['id'],
+            'name' => $this->nullIfEmpty($product['name'] ?? null),
+            'display_name' => $this->nullIfEmpty($product['display_name'] ?? null),
+            'default_code' => $this->nullIfEmpty($product['default_code'] ?? null),
+            'barcode' => $this->nullIfEmpty($product['barcode'] ?? null),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function findPosSaleBySerial(int $uid, string $serialNumber): ?array
+    {
+        $packMatch = $this->findPosPackLotMatch($uid, $serialNumber);
+        if ($this->saleHasDetails($packMatch['sale'] ?? null)) {
+            return $packMatch['sale'];
+        }
+
+        // Some POS setups keep serial text on the order line note/full name.
+        foreach ($this->serialCandidates($serialNumber) as $candidate) {
+            foreach (['full_product_name', 'customer_note', 'note'] as $field) {
+                try {
+                    $lines = $this->executeKw($uid, 'pos.order.line', 'search_read', [
+                        [[$field, 'ilike', $candidate]],
+                    ], [
+                        'fields' => ['id', 'order_id', 'product_id', $field],
+                        'limit' => 5,
+                        'order' => 'id desc',
+                    ]);
+                } catch (Throwable) {
+                    continue;
+                }
+
+                foreach ($lines as $line) {
+                    $orderId = is_array($line['order_id'] ?? null) ? (int) $line['order_id'][0] : 0;
+                    if ($orderId <= 0) {
+                        continue;
+                    }
+                    $sale = $this->saleFromPosOrder($uid, $orderId);
+                    if ($this->saleHasDetails($sale)) {
+                        return $sale;
+                    }
+                }
+            }
+        }
+
+        return is_array($packMatch['sale'] ?? null) ? $packMatch['sale'] : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function findLatestPosSaleForProduct(int $uid, int $productId): ?array
+    {
+        if ($productId <= 0) {
+            return null;
+        }
+
+        // Prefer an explicit POS pack-lot row for this product (unique unit), newest first.
+        try {
+            $packs = $this->executeKw($uid, 'pos.pack.operation.lot', 'search_read', [
+                [['product_id', '=', $productId]],
+            ], [
+                'fields' => ['id', 'lot_name', 'product_id', 'order_id', 'create_date'],
+                'limit' => 10,
+                'order' => 'id desc',
+            ]);
+
+            foreach ($packs as $pack) {
+                $orderId = is_array($pack['order_id'] ?? null) ? (int) $pack['order_id'][0] : 0;
+                if ($orderId <= 0) {
+                    continue;
+                }
+                $sale = $this->saleFromPosOrder($uid, $orderId);
+                if ($this->saleHasDetails($sale)) {
+                    return $sale;
+                }
+            }
+        } catch (Throwable) {
+            // Fall through to order lines.
+        }
+
+        try {
+            $lines = $this->executeKw($uid, 'pos.order.line', 'search_read', [
+                [['product_id', '=', $productId]],
+            ], [
+                'fields' => ['id', 'order_id', 'product_id', 'qty', 'full_product_name'],
+                'limit' => 10,
+                'order' => 'id desc',
+            ]);
+        } catch (Throwable) {
+            return null;
+        }
+
+        foreach ($lines as $line) {
+            $orderId = is_array($line['order_id'] ?? null) ? (int) $line['order_id'][0] : 0;
+            if ($orderId <= 0) {
+                continue;
+            }
+            $sale = $this->saleFromPosOrder($uid, $orderId);
+            if ($this->saleHasDetails($sale)) {
+                return $sale;
+            }
+        }
+
+        return null;
     }
 
     /**
