@@ -23,63 +23,61 @@
         </form>
     </div>
 
-    <div x-show="error" x-transition class="mt-4 overflow-hidden rounded-2xl border border-red-200 bg-white shadow-sm">
-        <div class="border-b border-red-100 bg-red-50 px-5 py-4 sm:px-6">
-            <p class="text-sm text-red-700" x-text="error"></p>
-            <button type="button" @click="lookup" class="mt-2 text-sm font-semibold text-red-800 underline underline-offset-2" x-show="query && !loading">Retry</button>
+    <div x-show="product" x-cloak x-transition class="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex items-start gap-3 border-b border-green-100 bg-green-50/70 px-4 py-3">
+            <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-600 text-white">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p class="text-[11px] font-semibold uppercase tracking-wider text-green-700">Product found</p>
+                <h2 class="truncate text-base font-bold text-brand-ink" x-text="product?.name"></h2>
+            </div>
         </div>
-        <div x-show="canRegister" class="bg-slate-50/70 px-5 py-4 sm:px-6">
-            <p class="text-sm text-slate-600">This product is not registered for warranty yet.</p>
-            <a :href="registerUrl" class="btn-brand mt-3 inline-flex w-full items-center justify-center px-4 py-2.5 text-sm sm:w-auto">
+
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-2 px-4 py-3 text-sm sm:grid-cols-3">
+            <div>
+                <dt class="text-[11px] font-medium uppercase tracking-wide text-slate-500">Model</dt>
+                <dd class="mt-0.5 font-mono text-sm font-semibold text-brand-ink" x-text="product?.model || '—'"></dd>
+            </div>
+            <div>
+                <dt class="text-[11px] font-medium uppercase tracking-wide text-slate-500">Category</dt>
+                <dd class="mt-0.5 text-sm font-semibold text-brand-ink" x-text="product?.category_name || '—'"></dd>
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+                <dt class="text-[11px] font-medium uppercase tracking-wide text-slate-500">Purchase date</dt>
+                <dd class="mt-0.5 text-sm font-semibold text-brand-ink" x-text="formatPurchaseDate(product?.purchase_date)"></dd>
+            </div>
+        </dl>
+
+        <div x-show="canRegister" class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/70 px-4 py-3">
+            <p class="text-sm text-slate-600">Not registered yet.</p>
+            <a :href="registerUrl" class="btn-brand inline-flex items-center justify-center px-3 py-2 text-sm">
                 Register warranty
+            </a>
+        </div>
+
+        <div x-show="isRegistered" class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/70 px-4 py-3">
+            <p class="text-sm text-slate-600">
+                Already registered
+                <span x-show="warrantyReference"> · <span class="font-semibold text-brand-ink" x-text="warrantyReference"></span></span>
+            </p>
+            <a href="{{ route('warranty.lookup') }}" class="btn-brand inline-flex items-center justify-center px-3 py-2 text-sm">
+                Look up warranty
             </a>
         </div>
     </div>
 
-    <div x-show="product" x-cloak x-transition class="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div class="border-b border-green-100 bg-gradient-to-br from-green-50 via-white to-brand-soft px-5 py-6 sm:px-6">
-            <div class="flex h-11 w-11 items-center justify-center rounded-full bg-green-600 text-white shadow-lg shadow-green-600/25">
-                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4" />
-                </svg>
-            </div>
-            <p class="mt-3 text-xs font-semibold uppercase tracking-wider text-green-700">Product found</p>
-            <h2 class="mt-1 text-xl font-bold tracking-tight text-brand-ink sm:text-2xl" x-text="product?.name"></h2>
+    <div x-show="error" x-transition class="mt-4 overflow-hidden rounded-xl border border-red-200 bg-white shadow-sm">
+        <div class="border-b border-red-100 bg-red-50 px-4 py-3">
+            <p class="text-sm text-red-700" x-text="error"></p>
+            <button type="button" @click="lookup" class="mt-2 text-sm font-semibold text-red-800 underline underline-offset-2" x-show="query && !loading">Retry</button>
         </div>
-
-        <dl class="divide-y divide-slate-100">
-            <div class="px-5 py-4 sm:px-6">
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Product name</dt>
-                <dd class="mt-1 text-sm font-semibold text-brand-ink" x-text="product?.name || '—'"></dd>
-            </div>
-            <div class="px-5 py-4 sm:px-6">
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Model</dt>
-                <dd class="mt-1 font-mono text-sm font-semibold tracking-wide text-brand-ink" x-text="product?.model || '—'"></dd>
-            </div>
-            <div class="px-5 py-4 sm:px-6">
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Category</dt>
-                <dd class="mt-1 text-sm font-semibold text-brand-ink" x-text="product?.category_name || '—'"></dd>
-            </div>
-            <div class="px-5 py-4 sm:px-6">
-                <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Date of purchase</dt>
-                <dd class="mt-1 text-sm font-semibold text-brand-ink" x-text="formatPurchaseDate(product?.purchase_date)"></dd>
-            </div>
-        </dl>
-
-        <div x-show="canRegister" class="border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
-            <p class="text-sm text-slate-600">This product is not registered for warranty yet.</p>
-            <a :href="registerUrl" class="btn-brand mt-3 inline-flex w-full items-center justify-center px-4 py-2.5 text-sm sm:w-auto">
+        <div x-show="canRegister" class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+            <p class="text-sm text-slate-600">Not registered yet.</p>
+            <a :href="registerUrl" class="btn-brand inline-flex items-center justify-center px-3 py-2 text-sm">
                 Register warranty
-            </a>
-        </div>
-
-        <div x-show="isRegistered" class="border-t border-slate-100 bg-slate-50/70 px-5 py-4 sm:px-6">
-            <p class="text-sm text-slate-600">
-                This product already has a warranty registration
-                <span x-show="warrantyReference"> (<span class="font-semibold text-brand-ink" x-text="warrantyReference"></span>)</span>.
-            </p>
-            <a href="{{ route('warranty.lookup') }}" class="btn-brand mt-3 inline-flex w-full items-center justify-center px-4 py-2.5 text-sm sm:w-auto">
-                Look up warranty
             </a>
         </div>
     </div>

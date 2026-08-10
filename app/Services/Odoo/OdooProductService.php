@@ -18,11 +18,48 @@ class OdooProductService
     ) {}
 
     /**
-     * @return array{found: bool, product?: array<string, mixed>, sale?: array<string, mixed>, customer?: array<string, mixed>, message: string}
+     * @return array{found: bool, product?: array<string, mixed>, sale?: array<string, mixed>|null, customer?: array<string, mixed>|null, message: string}
      */
     public function lookupBySerial(string $serialNumber): array
     {
-        return $this->client->validateSerial($serialNumber);
+        $serialNumber = trim($serialNumber);
+        $result = $this->client->validateSerial($serialNumber);
+
+        if ($result['found'] ?? false) {
+            return $result;
+        }
+
+        // Product lookup can match barcode/SKU/name even when no stock.lot/POS pack lot exists yet.
+        foreach ($this->queryCandidates($serialNumber) as $candidate) {
+            $odooProduct = $this->searchProduct($candidate, allowFuzzyName: false);
+            if (! $odooProduct) {
+                continue;
+            }
+
+            $product = $this->upsertProductFromOdoo($odooProduct);
+
+            return [
+                'found' => true,
+                'message' => 'Product matched in Odoo catalog.',
+                'product' => [
+                    'id' => $product->id,
+                    'odoo_product_id' => $product->odoo_product_id ?: $product->odoo_id,
+                    'odoo_serial_id' => null,
+                    'name' => $product->customerFacingName(),
+                    'model' => $product->model ?: $product->default_code ?: $product->sku,
+                    'category_id' => $product->product_category_id,
+                ],
+                'sale' => [
+                    'purchase_date' => null,
+                    'invoice_number' => null,
+                    'branch_name' => null,
+                    'odoo_pos_order_id' => null,
+                ],
+                'customer' => null,
+            ];
+        }
+
+        return $result;
     }
 
     /**
@@ -85,7 +122,7 @@ class OdooProductService
     /**
      * @return array<string, mixed>|null
      */
-    public function searchProduct(string $query): ?array
+    public function searchProduct(string $query, bool $allowFuzzyName = true): ?array
     {
         $query = trim($query);
         if ($query === '') {
@@ -93,30 +130,34 @@ class OdooProductService
         }
 
         $exactFields = ['barcode', 'default_code', 'name'];
-        foreach ($exactFields as $field) {
-            $result = $this->executeKw('product.product', 'search_read', [
-                [[$field, '=', $query]],
-                ['id', 'product_tmpl_id', 'name', 'display_name', 'default_code', 'barcode', 'type', 'categ_id', 'description', 'description_sale', 'list_price', 'standard_price', 'currency_id', 'uom_id', 'active', 'sale_ok', 'purchase_ok', 'tracking', 'create_date', 'write_date', 'image_1920'],
-                0,
-                1,
-                'id asc',
-            ]);
+        foreach ($this->queryCandidates($query) as $candidate) {
+            foreach ($exactFields as $field) {
+                $result = $this->executeKw('product.product', 'search_read', [
+                    [[$field, '=', $candidate]],
+                ], [
+                    'fields' => ['id', 'product_tmpl_id', 'name', 'display_name', 'default_code', 'barcode', 'type', 'categ_id', 'description', 'description_sale', 'list_price', 'standard_price', 'currency_id', 'uom_id', 'active', 'sale_ok', 'purchase_ok', 'tracking', 'create_date', 'write_date', 'image_1920'],
+                    'limit' => 1,
+                    'order' => 'id asc',
+                ]);
 
-            if (is_array($result) && isset($result[0])) {
-                return $result[0];
+                if (is_array($result) && isset($result[0])) {
+                    return $result[0];
+                }
             }
         }
 
-        $nameSearch = $this->executeKw('product.product', 'search_read', [
-            [['name', 'ilike', $query]],
-            ['id', 'product_tmpl_id', 'name', 'display_name', 'default_code', 'barcode', 'type', 'categ_id', 'description', 'description_sale', 'list_price', 'standard_price', 'currency_id', 'uom_id', 'active', 'sale_ok', 'purchase_ok', 'tracking', 'create_date', 'write_date', 'image_1920'],
-            0,
-            1,
-            'id asc',
-        ]);
+        if ($allowFuzzyName) {
+            $nameSearch = $this->executeKw('product.product', 'search_read', [
+                [['name', 'ilike', $query]],
+            ], [
+                'fields' => ['id', 'product_tmpl_id', 'name', 'display_name', 'default_code', 'barcode', 'type', 'categ_id', 'description', 'description_sale', 'list_price', 'standard_price', 'currency_id', 'uom_id', 'active', 'sale_ok', 'purchase_ok', 'tracking', 'create_date', 'write_date', 'image_1920'],
+                'limit' => 1,
+                'order' => 'id asc',
+            ]);
 
-        if (is_array($nameSearch) && isset($nameSearch[0])) {
-            return $nameSearch[0];
+            if (is_array($nameSearch) && isset($nameSearch[0])) {
+                return $nameSearch[0];
+            }
         }
 
         $serialLot = $this->findProductBySerialLot($query);
@@ -125,6 +166,20 @@ class OdooProductService
         }
 
         return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function queryCandidates(string $query): array
+    {
+        $trimmed = trim($query);
+
+        return array_values(array_unique(array_filter([
+            $trimmed,
+            strtoupper($trimmed),
+            strtolower($trimmed),
+        ], fn (string $value) => $value !== '')));
     }
 
     /**

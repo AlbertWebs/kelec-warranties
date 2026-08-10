@@ -62,70 +62,99 @@
         <div x-show="submitError" x-transition class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700" x-text="submitError"></div>
 
         <div x-show="!submitSuccess">
-        <div x-show="step === 1">
+        <div x-show="step === 1" x-transition.opacity.duration.200ms>
             <h2 class="text-xl font-semibold">Step 1: Serial number</h2>
             <p class="mt-2 text-sm text-slate-600">Find the serial number on the product rating label, packaging, or invoice.</p>
-            <form method="POST" action="{{ route('register-warranty.serial-check') }}" class="mt-6 space-y-4">
-                @csrf
+            <form class="mt-6 space-y-4" @submit.prevent="validateSerial">
                 <div>
                     <label class="mb-1 block text-sm font-medium">Product serial number</label>
                     <div class="flex gap-2">
-                        <input type="text" name="serial_number" id="serial_number" value="{{ old('serial_number', $prefill['serial_number'] ?? request('serial')) }}" required
-                               class="w-full rounded-lg border-slate-300 shadow-sm focus:border-red-600 focus:ring-red-600"
-                               placeholder="e.g. KE123456789">
-                        <button type="button" id="scan-serial-btn" class="whitespace-nowrap rounded-lg border px-3 py-2 text-sm">Scan QR</button>
+                        <input type="text" id="serial_number" x-model="serialNumber" :disabled="validatingSerial" required
+                               class="w-full rounded-lg border-slate-300 shadow-sm focus:border-red-600 focus:ring-red-600 disabled:bg-slate-50"
+                               placeholder="e.g. KE123456789" autocomplete="off">
+                        <button type="button" id="scan-serial-btn" :disabled="validatingSerial" class="whitespace-nowrap rounded-lg border px-3 py-2 text-sm disabled:opacity-60">Scan QR</button>
                     </div>
                     <p class="mt-2 text-xs text-slate-500">Tip: Brand Shop QR codes open this page with your serial prefilled. On supported phones, use Scan QR.</p>
                     <video id="serial-scanner" class="mt-3 hidden max-h-48 w-full rounded-lg bg-black" playsinline></video>
                 </div>
-                <button type="submit" class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white">Validate serial</button>
+
+                <div x-show="serialError" x-cloak x-transition class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" x-text="serialError"></div>
+
+                <button type="submit" :disabled="validatingSerial || !serialNumber.trim()" class="inline-flex items-center justify-center gap-2 rounded-lg bg-red-700 px-4 py-2.5 font-semibold text-white disabled:opacity-60">
+                    <svg x-show="validatingSerial" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" class="opacity-20" stroke="currentColor" stroke-width="3"></circle>
+                        <path d="M22 12a10 10 0 00-10-10" stroke="currentColor" stroke-width="3" class="opacity-90"></path>
+                    </svg>
+                    <span x-text="validatingSerial ? 'Validating serial...' : 'Validate serial'"></span>
+                </button>
             </form>
         </div>
 
-        <div x-show="step === 2">
+        <div x-show="step === 2" x-cloak x-transition.opacity.duration.200ms>
             <h2 class="text-xl font-semibold">Step 2: Validation result</h2>
-            @if ($serialResult)
-                <div class="mt-4 rounded-lg border px-4 py-3
-                    {{ in_array(($serialResult['status'] ?? ''), ['found', 'found_local'], true) ? 'border-green-200 bg-green-50 text-green-800' : 'border-amber-200 bg-amber-50 text-amber-900' }}">
-                    {{ $serialResult['message'] ?? '' }}
+
+            <div class="mt-4 rounded-xl border px-4 py-3 text-sm"
+                 :class="serialValidated
+                    ? 'border-green-200 bg-green-50 text-green-800'
+                    : 'border-amber-200 bg-amber-50 text-amber-900'">
+                <div class="flex items-start gap-3">
+                    <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+                         :class="serialValidated ? 'bg-green-600 text-white' : 'bg-amber-500 text-white'">
+                        <svg x-show="serialValidated" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        <svg x-show="!serialValidated" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                    </div>
+                    <div>
+                        <p class="font-semibold" x-text="serialValidated ? 'Serial validated' : 'Manual verification needed'"></p>
+                        <p class="mt-1" x-text="serialMessage"></p>
+                    </div>
                 </div>
-                @if (!empty($prefill['product_name']))
-                    <dl class="mt-4 grid gap-3 text-sm md:grid-cols-2">
-                        <div><dt class="text-slate-500">Product</dt><dd class="font-medium">{{ $prefill['product_name'] }}</dd></div>
-                        <div><dt class="text-slate-500">Model</dt><dd class="font-medium">{{ $prefill['product_model'] ?? '—' }}</dd></div>
-                        <div><dt class="text-slate-500">Purchase date</dt><dd class="font-medium">{{ $prefill['purchase_date'] ?? '—' }}</dd></div>
-                        <div><dt class="text-slate-500">Invoice</dt><dd class="font-medium">{{ $prefill['invoice_number'] ?? '—' }}</dd></div>
-                    </dl>
-                @endif
-            @else
-                <p class="mt-4 text-slate-600">Validate a serial number first, or continue if you already completed validation.</p>
-            @endif
+            </div>
+
+            <dl class="mt-4 grid gap-3 text-sm md:grid-cols-2" x-show="serialPrefill.product_name || serialPrefill.product_model || serialPrefill.purchase_date || serialPrefill.invoice_number">
+                <div>
+                    <dt class="text-slate-500">Product</dt>
+                    <dd class="font-medium text-slate-900" x-text="serialPrefill.product_name || '—'"></dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Model</dt>
+                    <dd class="font-medium text-slate-900" x-text="serialPrefill.product_model || '—'"></dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Purchase date</dt>
+                    <dd class="font-medium text-slate-900" x-text="formatDate(serialPrefill.purchase_date)"></dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Invoice</dt>
+                    <dd class="font-medium text-slate-900" x-text="serialPrefill.invoice_number || '—'"></dd>
+                </div>
+            </dl>
+
             <div class="mt-6 flex gap-3">
                 <button type="button" class="rounded-lg border px-4 py-2" @click="step = 1">Back</button>
-                <button type="button" class="rounded-lg bg-red-700 px-4 py-2 text-white" @click="step = 3">Continue</button>
+                <button type="button" class="rounded-lg bg-red-700 px-4 py-2 text-white" @click="continueAfterSerial">Continue</button>
             </div>
         </div>
 
         <form method="POST" action="{{ route('register-warranty.store') }}" enctype="multipart/form-data" x-show="step >= 3" @submit.prevent="submitRegistration($event)">
             @csrf
-            <input type="hidden" name="serial_number" value="{{ old('serial_number', $prefill['serial_number'] ?? '') }}">
-            <input type="hidden" name="product_id" value="{{ old('product_id', $prefill['product_id'] ?? '') }}">
-            <input type="hidden" name="product_category_id" value="{{ old('product_category_id', $prefill['product_category_id'] ?? '') }}">
+            <input type="hidden" name="serial_number" :value="serialNumber">
+            <input type="hidden" name="product_id" :value="serialPrefill.product_id || ''">
+            <input type="hidden" name="product_category_id" :value="serialPrefill.product_category_id || ''">
 
             <div x-show="step === 3">
                 <h2 class="text-xl font-semibold">Step 3: Customer details</h2>
                 <div class="mt-4 grid gap-4 md:grid-cols-2">
                     <div class="md:col-span-2">
                         <label class="mb-1 block text-sm font-medium">Full name</label>
-                        <input name="full_name" value="{{ old('full_name', $prefill['full_name'] ?? '') }}" required class="w-full rounded-lg border-slate-300">
+                        <input name="full_name" x-model="serialPrefill.full_name" value="{{ old('full_name', $prefill['full_name'] ?? '') }}" required class="w-full rounded-lg border-slate-300">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Mobile number</label>
-                        <input name="mobile_number" value="{{ old('mobile_number', $prefill['mobile_number'] ?? '') }}" required class="w-full rounded-lg border-slate-300" placeholder="07XXXXXXXX">
+                        <input name="mobile_number" x-model="serialPrefill.mobile_number" value="{{ old('mobile_number', $prefill['mobile_number'] ?? '') }}" required class="w-full rounded-lg border-slate-300" placeholder="07XXXXXXXX">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Email (optional)</label>
-                        <input type="email" name="email" value="{{ old('email', $prefill['email'] ?? '') }}" class="w-full rounded-lg border-slate-300">
+                        <input type="email" name="email" x-model="serialPrefill.email" value="{{ old('email', $prefill['email'] ?? '') }}" class="w-full rounded-lg border-slate-300">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">County (optional)</label>
@@ -165,15 +194,15 @@
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Branch / dealer name</label>
-                        <input name="branch_name" value="{{ old('branch_name', $prefill['branch_name'] ?? '') }}" class="w-full rounded-lg border-slate-300">
+                        <input name="branch_name" x-model="serialPrefill.branch_name" value="{{ old('branch_name', $prefill['branch_name'] ?? '') }}" class="w-full rounded-lg border-slate-300">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Purchase date</label>
-                        <input type="date" name="purchase_date" value="{{ old('purchase_date', $prefill['purchase_date'] ?? '') }}" required class="w-full rounded-lg border-slate-300">
+                        <input type="date" name="purchase_date" x-model="serialPrefill.purchase_date" value="{{ old('purchase_date', $prefill['purchase_date'] ?? '') }}" required class="w-full rounded-lg border-slate-300">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Invoice / receipt number</label>
-                        <input name="invoice_number" value="{{ old('invoice_number', $prefill['invoice_number'] ?? '') }}" class="w-full rounded-lg border-slate-300">
+                        <input name="invoice_number" x-model="serialPrefill.invoice_number" value="{{ old('invoice_number', $prefill['invoice_number'] ?? '') }}" class="w-full rounded-lg border-slate-300">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Receipt upload (PDF/JPG/PNG)</label>
@@ -182,7 +211,8 @@
                     <div>
                         <label class="mb-1 block text-sm font-medium">Product (if not auto-filled)</label>
                         <select name="product_id" class="w-full rounded-lg border-slate-300"
-                            @change="document.querySelector('input[type=hidden][name=product_id]').value = $event.target.value">
+                            x-model="serialPrefill.product_id"
+                            @change="serialPrefill.product_id = $event.target.value">
                             <option value="">Select product</option>
                             @foreach ($products as $product)
                                 <option value="{{ $product->id }}" @selected(old('product_id', $prefill['product_id'] ?? null) == $product->id)>{{ $product->name }}</option>
@@ -191,11 +221,11 @@
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Product name (manual)</label>
-                        <input name="product_name" value="{{ old('product_name', $prefill['product_name'] ?? '') }}" class="w-full rounded-lg border-slate-300">
+                        <input name="product_name" x-model="serialPrefill.product_name" value="{{ old('product_name', $prefill['product_name'] ?? '') }}" class="w-full rounded-lg border-slate-300">
                     </div>
                     <div>
                         <label class="mb-1 block text-sm font-medium">Product model</label>
-                        <input name="product_model" value="{{ old('product_model', $prefill['product_model'] ?? '') }}" class="w-full rounded-lg border-slate-300">
+                        <input name="product_model" x-model="serialPrefill.product_model" value="{{ old('product_model', $prefill['product_model'] ?? '') }}" class="w-full rounded-lg border-slate-300">
                     </div>
                 </div>
                 <div class="mt-6 flex gap-3">
@@ -207,7 +237,7 @@
             <div x-show="step === 5">
                 <h2 class="text-xl font-semibold">Step 5: Consent and submission</h2>
                 <div class="mt-4 space-y-4 rounded-lg bg-slate-50 p-4 text-sm">
-                    <p>Serial: <strong x-text="document.querySelector('[name=serial_number]')?.value || '{{ $prefill['serial_number'] ?? '' }}'"></strong></p>
+                    <p>Serial: <strong x-text="serialNumber || '—'"></strong></p>
                     <label class="flex items-start gap-3">
                         <input type="checkbox" name="privacy_accepted" value="1" required class="mt-1 rounded border-slate-300 text-red-700 focus:ring-red-600" @checked(old('privacy_accepted'))>
                         <span>I accept the <a href="{{ route('privacy-policy') }}" class="text-red-700 underline" target="_blank">Privacy Policy</a> and <a href="{{ route('warranty-terms') }}" class="text-red-700 underline" target="_blank">Warranty Terms</a>.</span>
@@ -232,12 +262,140 @@
 
 <script>
 function warrantyWizard() {
+    const initialPrefill = @json([
+        'serial_number' => old('serial_number', $prefill['serial_number'] ?? request('serial')),
+        'product_id' => old('product_id', $prefill['product_id'] ?? ''),
+        'product_category_id' => old('product_category_id', $prefill['product_category_id'] ?? ''),
+        'product_name' => old('product_name', $prefill['product_name'] ?? ''),
+        'product_model' => old('product_model', $prefill['product_model'] ?? ''),
+        'purchase_date' => old('purchase_date', $prefill['purchase_date'] ?? ''),
+        'invoice_number' => old('invoice_number', $prefill['invoice_number'] ?? ''),
+        'branch_name' => old('branch_name', $prefill['branch_name'] ?? ''),
+        'full_name' => old('full_name', $prefill['full_name'] ?? ''),
+        'mobile_number' => old('mobile_number', $prefill['mobile_number'] ?? ''),
+        'email' => old('email', $prefill['email'] ?? ''),
+    ]);
+
+    const initialSerialResult = @json($serialResult);
+
     return {
         step: {{ $initialStep }},
         submitting: false,
         submitSuccess: false,
         submitError: '',
         submitData: {},
+        serialNumber: initialPrefill.serial_number || '',
+        validatingSerial: false,
+        serialError: '',
+        serialValidated: @json(in_array(($serialResult['status'] ?? ''), ['found', 'found_local'], true)),
+        serialMessage: initialSerialResult?.message || '',
+        serialPrefill: {
+            product_id: initialPrefill.product_id ? String(initialPrefill.product_id) : '',
+            product_category_id: initialPrefill.product_category_id ? String(initialPrefill.product_category_id) : '',
+            product_name: initialPrefill.product_name || '',
+            product_model: initialPrefill.product_model || '',
+            purchase_date: initialPrefill.purchase_date || '',
+            invoice_number: initialPrefill.invoice_number || '',
+            branch_name: initialPrefill.branch_name || '',
+            full_name: initialPrefill.full_name || '',
+            mobile_number: initialPrefill.mobile_number || '',
+            email: initialPrefill.email || '',
+        },
+        formatDate(value) {
+            if (!value) return '—';
+            const date = new Date(`${value}T00:00:00`);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        },
+        applyPrefill(prefill = {}) {
+            const next = { ...this.serialPrefill };
+            for (const [key, value] of Object.entries(prefill)) {
+                if (value === null || value === undefined || value === '') continue;
+                if (key === 'serial_number') {
+                    this.serialNumber = String(value);
+                    continue;
+                }
+                if (Object.prototype.hasOwnProperty.call(next, key)) {
+                    next[key] = String(value);
+                }
+            }
+            this.serialPrefill = next;
+            this.syncProductSelect();
+        },
+        syncProductSelect() {
+            const productSelect = document.querySelector('select[name="product_id"]');
+            if (!productSelect) return;
+
+            if (this.serialPrefill.product_id) {
+                productSelect.value = String(this.serialPrefill.product_id);
+                return;
+            }
+
+            if (!this.serialPrefill.product_name) return;
+            const target = this.serialPrefill.product_name.trim().toLowerCase();
+            const match = Array.from(productSelect.options).find(opt => opt.textContent.trim().toLowerCase() === target);
+            if (match) {
+                productSelect.value = match.value;
+                this.serialPrefill.product_id = match.value;
+            }
+        },
+        continueAfterSerial() {
+            this.syncProductSelect();
+            this.step = 3;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+        async validateSerial() {
+            const serial = (this.serialNumber || '').trim();
+            if (!serial || this.validatingSerial) return;
+
+            this.validatingSerial = true;
+            this.serialError = '';
+
+            try {
+                const response = await fetch(@json(route('register-warranty.serial-check')), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+                            || document.querySelector('input[name="_token"]')?.value
+                            || '',
+                    },
+                    body: JSON.stringify({ serial_number: serial }),
+                });
+
+                const payload = await response.json();
+
+                if (response.status === 409 && payload.status === 'existing_active') {
+                    if (payload.redirect_url) {
+                        window.location.href = payload.redirect_url;
+                        return;
+                    }
+                    this.serialError = payload.message || 'This serial already has an active warranty.';
+                    return;
+                }
+
+                if (!response.ok) {
+                    const firstError = payload?.errors ? Object.values(payload.errors)[0] : null;
+                    this.serialError = Array.isArray(firstError)
+                        ? firstError[0]
+                        : (payload.message || 'Unable to validate this serial number right now.');
+                    return;
+                }
+
+                this.serialNumber = (payload.prefill?.serial_number || serial).toUpperCase();
+                this.serialValidated = Boolean(payload.validated);
+                this.serialMessage = payload.message || '';
+                this.applyPrefill(payload.prefill || {});
+                this.step = 2;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (e) {
+                this.serialError = 'We could not validate the serial number right now. Please try again shortly.';
+            } finally {
+                this.validatingSerial = false;
+            }
+        },
         async submitRegistration(event) {
             if (this.submitting) return;
             this.submitting = true;
@@ -245,6 +403,13 @@ function warrantyWizard() {
 
             const form = event.target;
             const formData = new FormData(form);
+            formData.set('serial_number', this.serialNumber);
+            if (this.serialPrefill.product_id) {
+                formData.set('product_id', this.serialPrefill.product_id);
+            }
+            if (this.serialPrefill.product_category_id) {
+                formData.set('product_category_id', this.serialPrefill.product_category_id);
+            }
 
             try {
                 const response = await fetch(form.action, {
@@ -316,6 +481,7 @@ document.getElementById('scan-serial-btn')?.addEventListener('click', async () =
                         value = url.searchParams.get('serial') || url.searchParams.get('reference') || value;
                     } catch (e) {}
                     input.value = value;
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
                     stream.getTracks().forEach(track => track.stop());
                     video.classList.add('hidden');
                     return;

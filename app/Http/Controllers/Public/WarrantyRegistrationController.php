@@ -31,19 +31,29 @@ class WarrantyRegistrationController extends Controller
         ]);
     }
 
-    public function checkSerial(SerialCheckRequest $request): RedirectResponse
+    public function checkSerial(SerialCheckRequest $request): RedirectResponse|JsonResponse
     {
-        $result = $this->registrationService->checkSerial($request->validated('serial_number'));
+        $serial = strtoupper(trim($request->validated('serial_number')));
+        $result = $this->registrationService->checkSerial($serial);
 
         if (($result['status'] ?? null) === 'existing_active') {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'status' => 'existing_active',
+                    'message' => $result['message'],
+                    'redirect_url' => route('warranty.lookup', ['serial' => $serial]),
+                ], 409);
+            }
+
             return redirect()
                 ->route('warranty.lookup')
                 ->with('warning', $result['message'])
-                ->with('lookup_serial', strtoupper($request->validated('serial_number')));
+                ->with('lookup_serial', $serial);
         }
 
         $prefill = [
-            'serial_number' => strtoupper($request->validated('serial_number')),
+            'serial_number' => $serial,
             'product_id' => $result['odoo']['product']['id'] ?? null,
             'product_name' => $result['odoo']['product']['name'] ?? null,
             'product_model' => $result['odoo']['product']['model'] ?? null,
@@ -57,6 +67,26 @@ class WarrantyRegistrationController extends Controller
         ];
 
         $prefill['product_id'] = $this->resolveLocalProductIdFromPrefill($prefill, $result);
+
+        if ($request->expectsJson()) {
+            $status = (string) ($result['status'] ?? 'not_found');
+            $validated = in_array($status, ['found', 'found_local'], true);
+
+            return response()->json([
+                'success' => true,
+                'status' => $status,
+                'validated' => $validated,
+                'message' => $result['message'] ?? 'Serial check completed.',
+                'prefill' => $prefill,
+                'product' => [
+                    'name' => $prefill['product_name'],
+                    'model' => $prefill['product_model'],
+                    'purchase_date' => $prefill['purchase_date'],
+                    'invoice_number' => $prefill['invoice_number'],
+                    'branch_name' => $prefill['branch_name'],
+                ],
+            ]);
+        }
 
         return redirect()
             ->route('register-warranty.create')

@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'K-Elec Warranties')</title>
     <meta name="description" content="@yield('meta_description', 'K-Elec warranty portal for appliance warranty registration, tracking, lookup, and certificate downloads in Kenya.')">
     <meta name="keywords" content="@yield('meta_keywords', 'K-Elec warranty, appliance warranty registration, warranty lookup Kenya, warranty certificate, track appliance warranty')">

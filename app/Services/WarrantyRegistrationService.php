@@ -38,7 +38,8 @@ class WarrantyRegistrationService
      */
     public function checkSerial(string $serialNumber): array
     {
-        $serialNumber = strtoupper(trim($serialNumber));
+        $originalSerial = trim($serialNumber);
+        $serialNumber = strtoupper($originalSerial);
         $existing = $this->eligibilityService->findActiveBySerial($serialNumber);
 
         if ($existing) {
@@ -49,7 +50,7 @@ class WarrantyRegistrationService
             ];
         }
 
-        $localProduct = $this->findLocalProductBySerial($serialNumber);
+        $localProduct = $this->findLocalProductBySerial($originalSerial);
         if ($localProduct) {
             return [
                 'status' => 'found_local',
@@ -60,8 +61,8 @@ class WarrantyRegistrationService
                     'product' => [
                         'id' => $localProduct->id,
                         'odoo_product_id' => $localProduct->odoo_product_id ?: $localProduct->odoo_id,
-                        'name' => $localProduct->name,
-                        'model' => $localProduct->model,
+                        'name' => $localProduct->customerFacingName(),
+                        'model' => $localProduct->model ?: $localProduct->default_code ?: $localProduct->sku,
                         'category_id' => $localProduct->product_category_id,
                     ],
                     'sale' => [],
@@ -71,7 +72,8 @@ class WarrantyRegistrationService
         }
 
         try {
-            $odoo = $this->odooProductService->lookupBySerial($serialNumber);
+            // Prefer the original casing for Odoo lookups; internal warranty keys stay uppercased.
+            $odoo = $this->odooProductService->lookupBySerial($originalSerial !== '' ? $originalSerial : $serialNumber);
 
             if (! ($odoo['found'] ?? false)) {
                 return [
@@ -262,14 +264,27 @@ class WarrantyRegistrationService
 
     protected function findLocalProductBySerial(string $serialNumber): ?Product
     {
+        $candidates = array_values(array_unique(array_filter([
+            trim($serialNumber),
+            strtoupper(trim($serialNumber)),
+            strtolower(trim($serialNumber)),
+        ], fn (string $value) => $value !== '')));
+
+        if ($candidates === []) {
+            return null;
+        }
+
         return Product::query()
-            ->where('serial_number', $serialNumber)
-            ->orWhere('barcode', $serialNumber)
-            ->orWhere('default_code', $serialNumber)
-            ->orWhere('sku', $serialNumber)
-            ->orWhere('product_code', $serialNumber)
-            ->orWhere('odoo_id', $serialNumber)
-            ->orWhere('odoo_product_id', $serialNumber)
+            ->where(function ($query) use ($candidates) {
+                $query->whereIn('serial_number', $candidates)
+                    ->orWhereIn('barcode', $candidates)
+                    ->orWhereIn('default_code', $candidates)
+                    ->orWhereIn('sku', $candidates)
+                    ->orWhereIn('product_code', $candidates)
+                    ->orWhereIn('odoo_id', $candidates)
+                    ->orWhereIn('odoo_product_id', $candidates)
+                    ->orWhereIn('model', $candidates);
+            })
             ->first();
     }
 }

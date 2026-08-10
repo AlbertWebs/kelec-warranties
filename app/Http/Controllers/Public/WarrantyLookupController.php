@@ -21,7 +21,7 @@ class WarrantyLookupController extends Controller
     {
         return view('public.lookup.index', [
             'reference' => old('reference', $request->query('reference')),
-            'serial_number' => old('serial_number', $request->session()->get('lookup_serial')),
+            'serial_number' => old('serial_number', $request->query('serial', $request->session()->get('lookup_serial'))),
         ]);
     }
 
