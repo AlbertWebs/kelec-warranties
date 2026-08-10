@@ -366,13 +366,18 @@ class OdooProductService
     protected function findProductBySerialLot(string $serial): ?array
     {
         foreach (['stock.lot', 'stock.production.lot'] as $lotModel) {
-            $lots = $this->executeKw($lotModel, 'search_read', [
-                [['name', '=', $serial]],
-                ['id', 'name', 'product_id'],
-                0,
-                1,
-                'id asc',
-            ]);
+            try {
+                $lots = $this->executeKw($lotModel, 'search_read', [
+                    [['name', '=', $serial]],
+                    ['id', 'name', 'product_id'],
+                    0,
+                    1,
+                    'id asc',
+                ]);
+            } catch (\Throwable) {
+                // Older/newer Odoo installs use different lot model names.
+                continue;
+            }
 
             if (! is_array($lots) || ! isset($lots[0])) {
                 continue;
