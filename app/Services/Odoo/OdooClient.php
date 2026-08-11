@@ -196,7 +196,7 @@ class OdooClient
             $message = ($sale['sale_status'] ?? null) === 'in_stock'
                 ? 'Serial found in stock'
                     .(filled($sale['branch_name'] ?? null) ? ' at '.$sale['branch_name'] : '')
-                    .'. This unit has not been sold yet — place of purchase is prefilled from the current branch; enter purchase date and invoice after the sale.'
+                    .'. This unit has not been sold yet. Place of purchase is prefilled from the current branch; enter purchase date and invoice after the sale.'
                 : 'Serial number validated against Odoo.';
 
             $this->log('validate_serial', $match['source'], 200, null, 'success', $serialNumber);
@@ -1290,7 +1290,7 @@ class OdooClient
 
             return [
                 'found' => true,
-                'message' => 'Serial found in stock at CBD. This unit has not been sold yet — place of purchase is prefilled from the current branch; enter purchase date and invoice after the sale.',
+                'message' => 'Serial found in stock at CBD. This unit has not been sold yet. Place of purchase is prefilled from the current branch; enter purchase date and invoice after the sale.',
                 'product' => [
                     'id' => $product?->id,
                     'odoo_product_id' => $product?->odoo_product_id ?? 'MOCK-P-100',

@@ -99,7 +99,7 @@ class WarrantyRegistrationService
                 $branch = $odooSale['branch_name'] ?? null;
                 $message = 'Product found in stock'
                     .($branch ? ' at '.$branch : '')
-                    .'. This unit was transferred internally and is not sold yet. Place of purchase is prefilled from the current branch — add purchase date and invoice after the customer buys it.';
+                    .'. This unit was transferred internally and is not sold yet. Place of purchase is prefilled from the current branch. Add purchase date and invoice after the customer buys it.';
             } elseif (is_array($odoo) && ! $hasSaleDetails) {
                 $message = 'Product found. Sale details were not automatically retrieved from Odoo, so please confirm purchase information.';
             }

@@ -252,8 +252,8 @@ class WarrantyRegistrationController extends Controller
                         'branch_name' => $option,
                         'dealer_id' => null,
                         'purchase_place_label' => $inStock
-                            ? 'Current branch — '.$option
-                            : 'Brand Shop — '.$option,
+                            ? 'Current branch: '.$option
+                            : 'Brand Shop: '.$option,
                     ];
                 }
             }
@@ -282,8 +282,8 @@ class WarrantyRegistrationController extends Controller
                         'branch_name' => $branch,
                         'dealer_id' => null,
                         'purchase_place_label' => $inStock
-                            ? 'Current branch — '.$branch
-                            : 'Brand Shop — '.$branch,
+                            ? 'Current branch: '.$branch
+                            : 'Brand Shop: '.$branch,
                     ];
                 }
 
@@ -292,7 +292,7 @@ class WarrantyRegistrationController extends Controller
                     'branch_name' => null,
                     'dealer_id' => $dealer->id,
                     'purchase_place_label' => $inStock
-                        ? 'Current seller — '.$dealer->name
+                        ? 'Current seller: '.$dealer->name
                         : $dealer->name,
                 ];
             }
@@ -307,7 +307,7 @@ class WarrantyRegistrationController extends Controller
                 'branch_name' => $branch,
                 'dealer_id' => null,
                 'purchase_place_label' => $branch
-                    ? ($inStock ? 'Current branch — '.$branch : 'Brand Shop — '.$branch)
+                    ? ($inStock ? 'Current branch: '.$branch : 'Brand Shop: '.$branch)
                     : ($inStock ? 'In stock (branch unknown)' : 'Brand Shop'),
             ];
         }
