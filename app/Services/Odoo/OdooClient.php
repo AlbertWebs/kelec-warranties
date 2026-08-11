@@ -342,7 +342,7 @@ class OdooClient
             $moves = $this->executeKw($uid, 'stock.move.line', 'search_read', [
                 [['lot_id', '=', $lotId]],
             ], [
-                'fields' => ['id', 'product_id', 'lot_id', 'reference', 'date', 'owner_id', 'location_dest_id'],
+                'fields' => ['id', 'product_id', 'lot_id', 'reference', 'date', 'owner_id', 'location_id', 'location_dest_id'],
                 'limit' => 20,
                 'order' => 'date desc, id desc',
             ]);
@@ -358,7 +358,7 @@ class OdooClient
             return [
                 'purchase_date' => isset($move['date']) ? substr((string) $move['date'], 0, 10) : null,
                 'invoice_number' => $move['reference'] ?? null,
-                'branch_name' => is_array($move['location_dest_id'] ?? null) ? $move['location_dest_id'][1] : null,
+                'branch_name' => $this->branchFromStockLocations($move),
                 'odoo_pos_order_id' => null,
                 'customer' => $this->customerFromPartner($uid, $ownerId, $ownerLabel),
             ];
@@ -379,7 +379,7 @@ class OdooClient
                 $moves = $this->executeKw($uid, 'stock.move.line', 'search_read', [
                     [['lot_name', '=', $candidate]],
                 ], [
-                    'fields' => ['id', 'product_id', 'lot_id', 'lot_name', 'reference', 'date', 'owner_id', 'location_dest_id'],
+                    'fields' => ['id', 'product_id', 'lot_id', 'lot_name', 'reference', 'date', 'owner_id', 'location_id', 'location_dest_id'],
                     'limit' => 1,
                     'order' => 'date desc, id desc',
                 ]);
@@ -395,7 +395,7 @@ class OdooClient
                 return [
                     'purchase_date' => isset($move['date']) ? substr((string) $move['date'], 0, 10) : null,
                     'invoice_number' => $move['reference'] ?? null,
-                    'branch_name' => is_array($move['location_dest_id'] ?? null) ? $move['location_dest_id'][1] : null,
+                    'branch_name' => $this->branchFromStockLocations($move),
                     'odoo_pos_order_id' => null,
                     'customer' => $this->customerFromPartner($uid, $ownerId, $ownerLabel),
                 ];
@@ -485,10 +485,58 @@ class OdooClient
         return [
             'purchase_date' => isset($order['date_order']) ? substr((string) $order['date_order'], 0, 10) : null,
             'invoice_number' => $invoice,
-            'branch_name' => is_array($order['config_id'] ?? null) ? (string) $order['config_id'][1] : null,
+            'branch_name' => $this->branchFromPosConfigName(
+                is_array($order['config_id'] ?? null) ? (string) $order['config_id'][1] : null
+            ),
             'odoo_pos_order_id' => (string) $orderId,
             'customer' => $customer,
         ];
+    }
+
+    protected function branchFromPosConfigName(?string $configName): ?string
+    {
+        $name = trim((string) $configName);
+        if ($name === '') {
+            return null;
+        }
+
+        $cleaned = preg_replace('/^(pos|point of sale|kelec|k-elec|brand shop)[\s\-\/:|]*/i', '', $name) ?? $name;
+        $cleaned = trim($cleaned, " \t\n\r\0\x0B-|/");
+
+        return $cleaned !== '' ? $cleaned : $name;
+    }
+
+    /**
+     * @param  array<string, mixed>  $move
+     */
+    protected function branchFromStockLocations(array $move): ?string
+    {
+        $candidates = [];
+        foreach (['location_id', 'location_dest_id'] as $field) {
+            if (is_array($move[$field] ?? null) && ! empty($move[$field][1])) {
+                $candidates[] = (string) $move[$field][1];
+            }
+        }
+
+        foreach ($candidates as $label) {
+            $lower = strtolower($label);
+            if (
+                str_contains($lower, 'customer')
+                || str_contains($lower, 'partner')
+                || str_contains($lower, 'vendor')
+                || str_contains($lower, 'inventory adjustment')
+            ) {
+                continue;
+            }
+
+            // Prefer warehouse / shop-looking labels (often "Sarin/Stock").
+            $shop = preg_replace('/\/.*$/', '', $label) ?? $label;
+            $shop = trim($shop);
+
+            return $shop !== '' ? $shop : $label;
+        }
+
+        return null;
     }
 
     /**

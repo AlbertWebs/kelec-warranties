@@ -63,12 +63,7 @@ class WarrantyRegistrationController extends Controller
         }
 
         $sale = is_array($result['odoo']['sale'] ?? null) ? $result['odoo']['sale'] : [];
-        $branchName = $this->normalizeBrandShopBranch($sale['branch_name'] ?? null);
-        $brandShopSource = PurchaseSource::query()->where('code', 'brand_shop')->first();
-        $hasPosSale = filled($sale['purchase_date'] ?? null)
-            || filled($sale['invoice_number'] ?? null)
-            || filled($sale['odoo_pos_order_id'] ?? null)
-            || filled($branchName);
+        $place = $this->resolvePurchasePlace($sale);
 
         $prefill = [
             'serial_number' => $serial,
@@ -78,8 +73,10 @@ class WarrantyRegistrationController extends Controller
             'product_category_id' => $result['odoo']['product']['category_id'] ?? null,
             'purchase_date' => $sale['purchase_date'] ?? null,
             'invoice_number' => $sale['invoice_number'] ?? null,
-            'branch_name' => $branchName,
-            'purchase_source_id' => $hasPosSale ? $brandShopSource?->id : null,
+            'branch_name' => $place['branch_name'],
+            'purchase_source_id' => $place['purchase_source_id'],
+            'dealer_id' => $place['dealer_id'],
+            'purchase_place_label' => $place['purchase_place_label'],
             'full_name' => $result['odoo']['customer']['full_name'] ?? null,
             'mobile_number' => $result['odoo']['customer']['mobile_number'] ?? null,
             'email' => $result['odoo']['customer']['email'] ?? null,
@@ -105,6 +102,9 @@ class WarrantyRegistrationController extends Controller
                     'purchase_date' => $prefill['purchase_date'],
                     'invoice_number' => $prefill['invoice_number'],
                     'branch_name' => $prefill['branch_name'],
+                    'purchase_place' => $prefill['purchase_place_label'],
+                    'purchase_source_id' => $prefill['purchase_source_id'],
+                    'dealer_id' => $prefill['dealer_id'],
                 ],
             ]);
         }
@@ -184,6 +184,159 @@ class WarrantyRegistrationController extends Controller
     }
 
     /**
+     * Map Odoo sale / POS config / stock location into registration purchase fields.
+     *
+     * @param  array<string, mixed>  $sale
+     * @return array{purchase_source_id: int|null, branch_name: string|null, dealer_id: int|null, purchase_place_label: string|null}
+     */
+    protected function resolvePurchasePlace(array $sale): array
+    {
+        $rawBranch = $this->cleanOdooLocationLabel($sale['branch_name'] ?? null);
+        $hasSaleEvidence = filled($sale['purchase_date'] ?? null)
+            || filled($sale['invoice_number'] ?? null)
+            || filled($sale['odoo_pos_order_id'] ?? null)
+            || filled($rawBranch);
+
+        $brandShop = PurchaseSource::query()->where('code', 'brand_shop')->first();
+        $dealerSource = PurchaseSource::query()->where('code', 'dealer')->first();
+        $jumia = PurchaseSource::query()->where('code', 'jumia')->first();
+        $kilimall = PurchaseSource::query()->where('code', 'kilimall')->first();
+        $other = PurchaseSource::query()->where('code', 'other')->first();
+
+        $empty = [
+            'purchase_source_id' => null,
+            'branch_name' => null,
+            'dealer_id' => null,
+            'purchase_place_label' => null,
+        ];
+
+        if (! $hasSaleEvidence) {
+            return $empty;
+        }
+
+        $lower = strtolower((string) $rawBranch);
+
+        if ($rawBranch && (str_contains($lower, 'jumia'))) {
+            return [
+                'purchase_source_id' => $jumia?->id,
+                'branch_name' => $rawBranch,
+                'dealer_id' => null,
+                'purchase_place_label' => 'Jumia',
+            ];
+        }
+
+        if ($rawBranch && (str_contains($lower, 'kilimall'))) {
+            return [
+                'purchase_source_id' => $kilimall?->id,
+                'branch_name' => $rawBranch,
+                'dealer_id' => null,
+                'purchase_place_label' => 'Kilimall',
+            ];
+        }
+
+        if ($rawBranch) {
+            foreach ($this->brandShopOptions() as $option) {
+                if (strcasecmp($rawBranch, $option) === 0 || str_contains($lower, strtolower($option))) {
+                    return [
+                        'purchase_source_id' => $brandShop?->id,
+                        'branch_name' => $option,
+                        'dealer_id' => null,
+                        'purchase_place_label' => 'Brand Shop — '.$option,
+                    ];
+                }
+            }
+
+            $dealer = Dealer::query()
+                ->where('is_active', true)
+                ->where(function ($query) use ($rawBranch) {
+                    $query->where('physical_location', 'like', '%'.$rawBranch.'%')
+                        ->orWhere('dealer_code', strtoupper($rawBranch))
+                        ->orWhere('name', 'like', '%'.$rawBranch.'%');
+                })
+                ->orderBy('name')
+                ->first();
+
+            if ($dealer) {
+                $isBrandShopDealer = str_contains(strtolower($dealer->name), 'brand shop')
+                    || in_array(strtoupper((string) $dealer->dealer_code), ['SARIN', 'CBD', 'WESTLANDS'], true);
+
+                if ($isBrandShopDealer) {
+                    $branch = $this->normalizeBrandShopBranch(
+                        $dealer->physical_location ?: $dealer->dealer_code ?: $dealer->name
+                    ) ?: $rawBranch;
+
+                    return [
+                        'purchase_source_id' => $brandShop?->id,
+                        'branch_name' => $branch,
+                        'dealer_id' => null,
+                        'purchase_place_label' => 'Brand Shop — '.$branch,
+                    ];
+                }
+
+                return [
+                    'purchase_source_id' => $dealerSource?->id,
+                    'branch_name' => null,
+                    'dealer_id' => $dealer->id,
+                    'purchase_place_label' => $dealer->name,
+                ];
+            }
+        }
+
+        // POS sale without a recognised branch still defaults to Brand Shop (K-Elec tills).
+        if (filled($sale['odoo_pos_order_id'] ?? null)) {
+            $branch = $this->normalizeBrandShopBranch($rawBranch);
+
+            return [
+                'purchase_source_id' => $brandShop?->id,
+                'branch_name' => $branch,
+                'dealer_id' => null,
+                'purchase_place_label' => $branch ? 'Brand Shop — '.$branch : 'Brand Shop',
+            ];
+        }
+
+        if ($rawBranch) {
+            return [
+                'purchase_source_id' => $other?->id ?? $brandShop?->id,
+                'branch_name' => $rawBranch,
+                'dealer_id' => null,
+                'purchase_place_label' => $rawBranch,
+            ];
+        }
+
+        return [
+            'purchase_source_id' => $brandShop?->id,
+            'branch_name' => null,
+            'dealer_id' => null,
+            'purchase_place_label' => 'Brand Shop',
+        ];
+    }
+
+    protected function cleanOdooLocationLabel(?string $label): ?string
+    {
+        $label = trim((string) $label);
+        if ($label === '') {
+            return null;
+        }
+
+        // Drop generic stock destinations that are not purchase outlets.
+        $lower = strtolower($label);
+        if (
+            str_contains($lower, 'customers')
+            || str_contains($lower, 'partners')
+            || str_contains($lower, 'vendors')
+            || str_contains($lower, 'inventory adjustment')
+            || $lower === 'stock'
+        ) {
+            return null;
+        }
+
+        $cleaned = preg_replace('/^(pos|point of sale|kelec|k-elec|brand shop)[\s\-\/:|]*/i', '', $label) ?? $label;
+        $cleaned = trim($cleaned, " \t\n\r\0\x0B-|/");
+
+        return $cleaned !== '' ? $cleaned : $label;
+    }
+
+    /**
      * @return list<string>
      */
     protected function brandShopOptions(): array
@@ -197,7 +350,7 @@ class WarrantyRegistrationController extends Controller
             ->where('is_active', true)
             ->where(function ($query) {
                 $query->where('name', 'like', '%Brand Shop%')
-                    ->orWhereIn('dealer_code', ['SARIN', 'CBD']);
+                    ->orWhereIn('dealer_code', ['SARIN', 'CBD', 'WESTLANDS']);
             })
             ->orderBy('name')
             ->get(['name', 'physical_location', 'dealer_code'])
@@ -217,8 +370,8 @@ class WarrantyRegistrationController extends Controller
 
     protected function normalizeBrandShopBranch(?string $branch): ?string
     {
-        $branch = trim((string) $branch);
-        if ($branch === '') {
+        $branch = $this->cleanOdooLocationLabel($branch);
+        if ($branch === null || $branch === '') {
             return null;
         }
 

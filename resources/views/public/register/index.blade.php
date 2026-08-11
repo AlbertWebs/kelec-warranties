@@ -42,8 +42,10 @@
         'product_model' => old('product_model', $prefill['product_model'] ?? ''),
         'purchase_date' => old('purchase_date', $prefill['purchase_date'] ?? ''),
         'invoice_number' => old('invoice_number', $prefill['invoice_number'] ?? ''),
+        'dealer_id' => old('dealer_id', $prefill['dealer_id'] ?? ''),
         'branch_name' => old('branch_name', $prefill['branch_name'] ?? ''),
         'purchase_source_id' => old('purchase_source_id', $prefill['purchase_source_id'] ?? ''),
+        'purchase_place_label' => old('purchase_place_label', $prefill['purchase_place_label'] ?? ''),
         'full_name' => old('full_name', $prefill['full_name'] ?? ''),
         'mobile_number' => old('mobile_number', $prefill['mobile_number'] ?? ''),
         'email' => old('email', $prefill['email'] ?? ''),
@@ -129,7 +131,7 @@
                 </div>
             </div>
 
-            <dl class="mt-4 grid gap-3 text-sm md:grid-cols-2" x-show="serialPrefill.product_name || serialPrefill.product_model || serialPrefill.purchase_date || serialPrefill.invoice_number">
+            <dl class="mt-4 grid gap-3 text-sm md:grid-cols-2" x-show="serialPrefill.product_name || serialPrefill.product_model || serialPrefill.purchase_date || serialPrefill.invoice_number || serialPrefill.purchase_place_label">
                 <div>
                     <dt class="text-slate-500">Product</dt>
                     <dd class="font-medium text-slate-900" x-text="serialPrefill.product_name || '—'"></dd>
@@ -137,6 +139,10 @@
                 <div>
                     <dt class="text-slate-500">Model</dt>
                     <dd class="font-medium text-slate-900" x-text="serialPrefill.product_model || '—'"></dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Place of purchase</dt>
+                    <dd class="font-medium text-slate-900" x-text="serialPrefill.purchase_place_label || serialPrefill.branch_name || '—'"></dd>
                 </div>
                 <div>
                     <dt class="text-slate-500">Purchase date</dt>
@@ -213,10 +219,10 @@
                     </div>
                     <div x-show="isDealerSelected" x-cloak>
                         <label class="mb-1 block text-sm font-medium">Dealer</label>
-                        <select name="dealer_id" class="w-full rounded-lg border-slate-300" :disabled="!isDealerSelected">
+                        <select name="dealer_id" x-model="dealerId" class="w-full rounded-lg border-slate-300" :disabled="!isDealerSelected">
                             <option value="">Select dealer</option>
                             @foreach ($dealers as $dealer)
-                                <option value="{{ $dealer->id }}" @selected(old('dealer_id') == $dealer->id)>{{ $dealer->name }}</option>
+                                <option value="{{ $dealer->id }}" @selected(old('dealer_id', $prefill['dealer_id'] ?? null) == $dealer->id)>{{ $dealer->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -305,6 +311,7 @@ function warrantyWizard() {
         serialValidated: @json($serialValidatedInitially),
         serialMessage: initialSerialResult?.message || '',
         purchaseSourceId: initialPrefill.purchase_source_id ? String(initialPrefill.purchase_source_id) : '',
+        dealerId: initialPrefill.dealer_id ? String(initialPrefill.dealer_id) : '',
         brandShopSourceId: @json(isset($brandShopSourceId) ? (string) $brandShopSourceId : ''),
         dealerSourceId: @json(isset($dealerSourceId) ? (string) $dealerSourceId : ''),
         get isBrandShopSelected() {
@@ -321,6 +328,7 @@ function warrantyWizard() {
             purchase_date: initialPrefill.purchase_date || '',
             invoice_number: initialPrefill.invoice_number || '',
             branch_name: initialPrefill.branch_name || '',
+            purchase_place_label: initialPrefill.purchase_place_label || '',
             full_name: initialPrefill.full_name || '',
             mobile_number: initialPrefill.mobile_number || '',
             email: initialPrefill.email || '',
@@ -343,6 +351,10 @@ function warrantyWizard() {
                 }
                 if (key === 'purchase_source_id') {
                     this.purchaseSourceId = String(value);
+                    continue;
+                }
+                if (key === 'dealer_id') {
+                    this.dealerId = String(value);
                     continue;
                 }
                 if (Object.prototype.hasOwnProperty.call(next, key)) {
