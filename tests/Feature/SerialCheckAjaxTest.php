@@ -62,6 +62,23 @@ class SerialCheckAjaxTest extends TestCase
             ->assertJsonPath('prefill.purchase_place_label', 'Brand Shop — Sarin');
     }
 
+    public function test_ajax_serial_check_handles_internal_transfer_in_stock_unit(): void
+    {
+        $brandShopId = \App\Models\PurchaseSource::query()->where('code', 'brand_shop')->value('id');
+
+        $this->postJson(route('register-warranty.serial-check'), [
+            'serial_number' => 'MOCK-STOCK-CBD-1',
+        ])
+            ->assertOk()
+            ->assertJsonPath('validated', true)
+            ->assertJsonPath('sale_status', 'in_stock')
+            ->assertJsonPath('prefill.purchase_source_id', $brandShopId)
+            ->assertJsonPath('prefill.branch_name', 'CBD')
+            ->assertJsonPath('prefill.purchase_date', null)
+            ->assertJsonPath('prefill.invoice_number', null)
+            ->assertJsonPath('prefill.purchase_place_label', 'Current branch — CBD');
+    }
+
     public function test_ajax_serial_check_redirects_existing_active_warranty(): void
     {
         Warranty::factory()->create([

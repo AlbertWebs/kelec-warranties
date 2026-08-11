@@ -136,24 +136,44 @@ class OdooClient
             $productDetails = $productId > 0 ? $this->fetchProductDetails($uid, $productId) : null;
 
             $sale = $match['sale'] ?? null;
-            if (! $this->saleHasDetails($sale)) {
-                $sale = $this->findSaleForLot($uid, (int) ($match['lot_id'] ?? 0), $serialNumber);
+            if (! $this->isCustomerSale($sale)) {
+                $sale = $this->findCustomerSaleForLot($uid, (int) ($match['lot_id'] ?? 0), $serialNumber);
             }
-            if (! $this->saleHasDetails($sale)) {
-                $sale = $this->findSaleBySerialName($uid, $serialNumber);
-            }
-            if (! $this->saleHasDetails($sale)) {
+            if (! $this->isCustomerSale($sale)) {
                 $sale = $this->findPosSaleBySerial($uid, $serialNumber);
             }
 
             // Never fall back to "latest POS sale for this product model" — that belongs to a
             // different unit and often an already-registered warranty.
 
+            $currentLocation = $this->findCurrentLocationForLot($uid, (int) ($match['lot_id'] ?? 0), $serialNumber);
+
+            if (! $this->isCustomerSale($sale)) {
+                // Internal transfer / still in warehouse — not a customer purchase yet.
+                $sale = [
+                    'purchase_date' => null,
+                    'invoice_number' => null,
+                    'branch_name' => $currentLocation['branch_name'] ?? null,
+                    'odoo_pos_order_id' => null,
+                    'sale_status' => 'in_stock',
+                    'current_location' => $currentLocation['location_label'] ?? null,
+                    'customer' => null,
+                ];
+            } else {
+                $sale['sale_status'] = 'sold';
+                if (! filled($sale['branch_name'] ?? null) && filled($currentLocation['branch_name'] ?? null)) {
+                    $sale['branch_name'] = $currentLocation['branch_name'];
+                }
+                $sale['current_location'] = $currentLocation['location_label'] ?? ($sale['branch_name'] ?? null);
+            }
+
             // Enrich customer contact only from POS rows that match this exact serial.
-            if ($this->customerNeedsContactEnrichment(is_array($sale) ? ($sale['customer'] ?? null) : null)) {
+            if (($sale['sale_status'] ?? null) === 'sold'
+                && $this->customerNeedsContactEnrichment(is_array($sale) ? ($sale['customer'] ?? null) : null)) {
                 $posSale = $this->findPosSaleBySerial($uid, $serialNumber);
                 if (is_array($posSale)) {
                     $sale = $this->mergeSaleDetails($sale, $posSale);
+                    $sale['sale_status'] = 'sold';
                 }
             }
 
@@ -173,11 +193,17 @@ class OdooClient
                 ?: $this->nullIfEmpty($match['product_name'] ?? null)
                 ?: $model;
 
+            $message = ($sale['sale_status'] ?? null) === 'in_stock'
+                ? 'Serial found in stock'
+                    .(filled($sale['branch_name'] ?? null) ? ' at '.$sale['branch_name'] : '')
+                    .'. This unit has not been sold yet — place of purchase is prefilled from the current branch; enter purchase date and invoice after the sale.'
+                : 'Serial number validated against Odoo.';
+
             $this->log('validate_serial', $match['source'], 200, null, 'success', $serialNumber);
 
             return [
                 'found' => true,
-                'message' => 'Serial number validated against Odoo.',
+                'message' => $message,
                 'product' => [
                     'odoo_product_id' => $productId > 0 ? $productId : ($match['product_id'] ?? null),
                     'odoo_serial_id' => $match['lot_id'] ?? null,
@@ -330,43 +356,147 @@ class OdooClient
     }
 
     /**
+     * Only treat stock moves that deliver to a customer as a sale.
+     * Internal warehouse transfers must not invent purchase date / invoice.
+     *
      * @return array<string, mixed>|null
      */
-    protected function findSaleForLot(int $uid, int $lotId, string $serialNumber): ?array
+    protected function findCustomerSaleForLot(int $uid, int $lotId, string $serialNumber): ?array
     {
-        if ($lotId <= 0) {
+        $moves = $this->fetchMoveLinesForLot($uid, $lotId, $serialNumber);
+        if ($moves === []) {
             return null;
         }
 
-        try {
-            $moves = $this->executeKw($uid, 'stock.move.line', 'search_read', [
-                [['lot_id', '=', $lotId]],
-            ], [
-                'fields' => ['id', 'product_id', 'lot_id', 'reference', 'date', 'owner_id', 'location_id', 'location_dest_id'],
-                'limit' => 20,
-                'order' => 'date desc, id desc',
-            ]);
-
-            if ($moves === []) {
-                return null;
+        foreach ($moves as $move) {
+            $destLabel = is_array($move['location_dest_id'] ?? null) ? (string) $move['location_dest_id'][1] : null;
+            if (! $this->isCustomerLocationLabel($destLabel)) {
+                continue;
             }
 
-            $move = $moves[0];
             $ownerId = is_array($move['owner_id'] ?? null) ? (int) $move['owner_id'][0] : null;
             $ownerLabel = is_array($move['owner_id'] ?? null) ? (string) $move['owner_id'][1] : null;
 
             return [
                 'purchase_date' => isset($move['date']) ? substr((string) $move['date'], 0, 10) : null,
-                'invoice_number' => $move['reference'] ?? null,
+                'invoice_number' => $this->nullIfEmpty($move['reference'] ?? null),
                 'branch_name' => $this->branchFromStockLocations($move),
                 'odoo_pos_order_id' => null,
+                'sale_status' => 'sold',
                 'customer' => $this->customerFromPartner($uid, $ownerId, $ownerLabel),
             ];
-        } catch (Throwable $e) {
-            $this->log('retrieve_sale', 'stock.move.line', 500, $e->getMessage(), 'failed', $serialNumber);
-
-            return null;
         }
+
+        return null;
+    }
+
+    /**
+     * @return array{branch_name: string|null, location_label: string|null}
+     */
+    protected function findCurrentLocationForLot(int $uid, int $lotId, string $serialNumber): array
+    {
+        $empty = ['branch_name' => null, 'location_label' => null];
+        if ($lotId <= 0) {
+            return $empty;
+        }
+
+        try {
+            $quants = $this->executeKw($uid, 'stock.quant', 'search_read', [
+                [
+                    ['lot_id', '=', $lotId],
+                    ['quantity', '>', 0],
+                ],
+            ], [
+                'fields' => ['id', 'location_id', 'quantity'],
+                'limit' => 5,
+                'order' => 'quantity desc, id desc',
+            ]);
+
+            foreach ($quants as $quant) {
+                $label = is_array($quant['location_id'] ?? null) ? (string) $quant['location_id'][1] : null;
+                if ($this->isCustomerLocationLabel($label) || $this->isIgnoredStockLocationLabel($label)) {
+                    continue;
+                }
+
+                return [
+                    'location_label' => $label,
+                    'branch_name' => $this->shopNameFromLocationLabel($label),
+                ];
+            }
+        } catch (Throwable $e) {
+            $this->log('current_location', 'stock.quant', 500, $e->getMessage(), 'failed', $serialNumber);
+        }
+
+        $moves = $this->fetchMoveLinesForLot($uid, $lotId, $serialNumber);
+        foreach ($moves as $move) {
+            foreach (['location_dest_id', 'location_id'] as $field) {
+                $label = is_array($move[$field] ?? null) ? (string) $move[$field][1] : null;
+                if ($this->isCustomerLocationLabel($label) || $this->isIgnoredStockLocationLabel($label)) {
+                    continue;
+                }
+
+                return [
+                    'location_label' => $label,
+                    'branch_name' => $this->shopNameFromLocationLabel($label),
+                ];
+            }
+        }
+
+        return $empty;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function fetchMoveLinesForLot(int $uid, int $lotId, string $serialNumber): array
+    {
+        if ($lotId > 0) {
+            try {
+                $moves = $this->executeKw($uid, 'stock.move.line', 'search_read', [
+                    [['lot_id', '=', $lotId]],
+                ], [
+                    'fields' => ['id', 'product_id', 'lot_id', 'reference', 'date', 'owner_id', 'location_id', 'location_dest_id'],
+                    'limit' => 30,
+                    'order' => 'date desc, id desc',
+                ]);
+
+                if (is_array($moves) && $moves !== []) {
+                    return $moves;
+                }
+            } catch (Throwable $e) {
+                $this->log('retrieve_sale', 'stock.move.line', 500, $e->getMessage(), 'failed', $serialNumber);
+            }
+        }
+
+        foreach ($this->serialCandidates($serialNumber) as $candidate) {
+            try {
+                $moves = $this->executeKw($uid, 'stock.move.line', 'search_read', [
+                    [['lot_name', '=', $candidate]],
+                ], [
+                    'fields' => ['id', 'product_id', 'lot_id', 'lot_name', 'reference', 'date', 'owner_id', 'location_id', 'location_dest_id'],
+                    'limit' => 30,
+                    'order' => 'date desc, id desc',
+                ]);
+            } catch (Throwable) {
+                $moves = [];
+            }
+
+            if (is_array($moves) && $moves !== []) {
+                return $moves;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @deprecated Prefer findCustomerSaleForLot — kept name unused callers may reference.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function findSaleForLot(int $uid, int $lotId, string $serialNumber): ?array
+    {
+        return $this->findCustomerSaleForLot($uid, $lotId, $serialNumber);
     }
 
     /**
@@ -374,35 +504,7 @@ class OdooClient
      */
     protected function findSaleBySerialName(int $uid, string $serialNumber): ?array
     {
-        foreach ($this->serialCandidates($serialNumber) as $candidate) {
-            try {
-                $moves = $this->executeKw($uid, 'stock.move.line', 'search_read', [
-                    [['lot_name', '=', $candidate]],
-                ], [
-                    'fields' => ['id', 'product_id', 'lot_id', 'lot_name', 'reference', 'date', 'owner_id', 'location_id', 'location_dest_id'],
-                    'limit' => 1,
-                    'order' => 'date desc, id desc',
-                ]);
-            } catch (Throwable) {
-                $moves = [];
-            }
-
-            if ($moves !== []) {
-                $move = $moves[0];
-                $ownerId = is_array($move['owner_id'] ?? null) ? (int) $move['owner_id'][0] : null;
-                $ownerLabel = is_array($move['owner_id'] ?? null) ? (string) $move['owner_id'][1] : null;
-
-                return [
-                    'purchase_date' => isset($move['date']) ? substr((string) $move['date'], 0, 10) : null,
-                    'invoice_number' => $move['reference'] ?? null,
-                    'branch_name' => $this->branchFromStockLocations($move),
-                    'odoo_pos_order_id' => null,
-                    'customer' => $this->customerFromPartner($uid, $ownerId, $ownerLabel),
-                ];
-            }
-        }
-
-        return null;
+        return $this->findCustomerSaleForLot($uid, 0, $serialNumber);
     }
 
     /**
@@ -519,24 +621,71 @@ class OdooClient
         }
 
         foreach ($candidates as $label) {
-            $lower = strtolower($label);
-            if (
-                str_contains($lower, 'customer')
-                || str_contains($lower, 'partner')
-                || str_contains($lower, 'vendor')
-                || str_contains($lower, 'inventory adjustment')
-            ) {
+            if ($this->isCustomerLocationLabel($label) || $this->isIgnoredStockLocationLabel($label)) {
                 continue;
             }
 
-            // Prefer warehouse / shop-looking labels (often "Sarin/Stock").
-            $shop = preg_replace('/\/.*$/', '', $label) ?? $label;
-            $shop = trim($shop);
-
-            return $shop !== '' ? $shop : $label;
+            return $this->shopNameFromLocationLabel($label);
         }
 
         return null;
+    }
+
+    protected function shopNameFromLocationLabel(?string $label): ?string
+    {
+        $label = trim((string) $label);
+        if ($label === '') {
+            return null;
+        }
+
+        // Prefer warehouse / shop-looking labels (often "Sarin/Stock").
+        $shop = preg_replace('/\/.*$/', '', $label) ?? $label;
+        $shop = trim($shop);
+
+        return $shop !== '' ? $shop : $label;
+    }
+
+    protected function isCustomerLocationLabel(?string $label): bool
+    {
+        $lower = strtolower(trim((string) $label));
+        if ($lower === '') {
+            return false;
+        }
+
+        return str_contains($lower, 'customer')
+            || str_contains($lower, 'partners/customers')
+            || str_contains($lower, 'partner/customers');
+    }
+
+    protected function isIgnoredStockLocationLabel(?string $label): bool
+    {
+        $lower = strtolower(trim((string) $label));
+        if ($lower === '') {
+            return true;
+        }
+
+        return str_contains($lower, 'vendor')
+            || str_contains($lower, 'inventory adjustment')
+            || str_contains($lower, 'virtual')
+            || $lower === 'stock';
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $sale
+     */
+    protected function isCustomerSale(?array $sale): bool
+    {
+        if (! is_array($sale)) {
+            return false;
+        }
+
+        if (($sale['sale_status'] ?? null) === 'in_stock') {
+            return false;
+        }
+
+        return filled($sale['odoo_pos_order_id'] ?? null)
+            || filled($sale['purchase_date'] ?? null)
+            || filled($sale['invoice_number'] ?? null);
     }
 
     /**
@@ -1134,6 +1283,34 @@ class OdooClient
     {
         $normalized = strtoupper(trim($serialNumber));
 
+        if (str_starts_with($normalized, 'MOCK-STOCK') || str_contains($normalized, 'TRANSFER')) {
+            $product = Product::query()->where('is_active', true)->first();
+
+            $this->log('validate_serial', 'mock', 200, null, 'success', $serialNumber);
+
+            return [
+                'found' => true,
+                'message' => 'Serial found in stock at CBD. This unit has not been sold yet — place of purchase is prefilled from the current branch; enter purchase date and invoice after the sale.',
+                'product' => [
+                    'id' => $product?->id,
+                    'odoo_product_id' => $product?->odoo_product_id ?? 'MOCK-P-100',
+                    'odoo_serial_id' => 'MOCK-S-'.$normalized,
+                    'name' => $product?->name ?? 'K-Elec Sample Appliance',
+                    'model' => $product?->model ?? 'KE-1000',
+                    'category_id' => $product?->product_category_id,
+                ],
+                'sale' => [
+                    'purchase_date' => null,
+                    'invoice_number' => null,
+                    'branch_name' => 'CBD',
+                    'odoo_pos_order_id' => null,
+                    'sale_status' => 'in_stock',
+                    'current_location' => 'CBD/Stock',
+                ],
+                'customer' => null,
+            ];
+        }
+
         if (str_starts_with($normalized, 'MOCK-MISS') || str_contains($normalized, 'NOTFOUND')) {
             $this->log('validate_serial', 'mock', 404, 'Serial not found', 'not_found', $serialNumber);
 
@@ -1165,6 +1342,8 @@ class OdooClient
                 'invoice_number' => 'INV-MOCK-001',
                 'branch_name' => 'Sarin',
                 'odoo_pos_order_id' => 'POS-MOCK-001',
+                'sale_status' => 'sold',
+                'current_location' => 'Sarin',
             ],
             'customer' => [
                 'full_name' => str_starts_with($normalized, 'MOCK-CUST') ? 'Mock Prefill Customer' : null,

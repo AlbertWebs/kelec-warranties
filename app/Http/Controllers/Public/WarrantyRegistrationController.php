@@ -63,6 +63,7 @@ class WarrantyRegistrationController extends Controller
         }
 
         $sale = is_array($result['odoo']['sale'] ?? null) ? $result['odoo']['sale'] : [];
+        $inStock = ($sale['sale_status'] ?? null) === 'in_stock';
         $place = $this->resolvePurchasePlace($sale);
 
         $prefill = [
@@ -71,17 +72,20 @@ class WarrantyRegistrationController extends Controller
             'product_name' => $result['odoo']['product']['name'] ?? null,
             'product_model' => $result['odoo']['product']['model'] ?? null,
             'product_category_id' => $result['odoo']['product']['category_id'] ?? null,
-            'purchase_date' => $sale['purchase_date'] ?? null,
-            'invoice_number' => $sale['invoice_number'] ?? null,
+            // Internal transfers must not invent a purchase date / invoice.
+            'purchase_date' => $inStock ? null : ($sale['purchase_date'] ?? null),
+            'invoice_number' => $inStock ? null : ($sale['invoice_number'] ?? null),
             'branch_name' => $place['branch_name'],
             'purchase_source_id' => $place['purchase_source_id'],
             'dealer_id' => $place['dealer_id'],
             'purchase_place_label' => $place['purchase_place_label'],
-            'full_name' => $result['odoo']['customer']['full_name'] ?? null,
-            'mobile_number' => $result['odoo']['customer']['mobile_number'] ?? null,
-            'email' => $result['odoo']['customer']['email'] ?? null,
-            'county' => $result['odoo']['customer']['county'] ?? null,
-            'town' => $result['odoo']['customer']['town'] ?? null,
+            'sale_status' => $sale['sale_status'] ?? null,
+            'current_location' => $sale['current_location'] ?? null,
+            'full_name' => $inStock ? null : ($result['odoo']['customer']['full_name'] ?? null),
+            'mobile_number' => $inStock ? null : ($result['odoo']['customer']['mobile_number'] ?? null),
+            'email' => $inStock ? null : ($result['odoo']['customer']['email'] ?? null),
+            'county' => $inStock ? null : ($result['odoo']['customer']['county'] ?? null),
+            'town' => $inStock ? null : ($result['odoo']['customer']['town'] ?? null),
         ];
 
         $prefill['product_id'] = $this->resolveLocalProductIdFromPrefill($prefill, $result);
@@ -94,6 +98,7 @@ class WarrantyRegistrationController extends Controller
                 'success' => true,
                 'status' => $status,
                 'validated' => $validated,
+                'sale_status' => $prefill['sale_status'],
                 'message' => $result['message'] ?? 'Serial check completed.',
                 'prefill' => $prefill,
                 'product' => [
@@ -105,6 +110,8 @@ class WarrantyRegistrationController extends Controller
                     'purchase_place' => $prefill['purchase_place_label'],
                     'purchase_source_id' => $prefill['purchase_source_id'],
                     'dealer_id' => $prefill['dealer_id'],
+                    'sale_status' => $prefill['sale_status'],
+                    'current_location' => $prefill['current_location'],
                 ],
             ]);
         }
@@ -191,8 +198,11 @@ class WarrantyRegistrationController extends Controller
      */
     protected function resolvePurchasePlace(array $sale): array
     {
-        $rawBranch = $this->cleanOdooLocationLabel($sale['branch_name'] ?? null);
-        $hasSaleEvidence = filled($sale['purchase_date'] ?? null)
+        $rawBranch = $this->cleanOdooLocationLabel($sale['branch_name'] ?? null)
+            ?: $this->cleanOdooLocationLabel($sale['current_location'] ?? null);
+        $inStock = ($sale['sale_status'] ?? null) === 'in_stock';
+        $hasSaleEvidence = $inStock
+            || filled($sale['purchase_date'] ?? null)
             || filled($sale['invoice_number'] ?? null)
             || filled($sale['odoo_pos_order_id'] ?? null)
             || filled($rawBranch);
@@ -241,7 +251,9 @@ class WarrantyRegistrationController extends Controller
                         'purchase_source_id' => $brandShop?->id,
                         'branch_name' => $option,
                         'dealer_id' => null,
-                        'purchase_place_label' => 'Brand Shop — '.$option,
+                        'purchase_place_label' => $inStock
+                            ? 'Current branch — '.$option
+                            : 'Brand Shop — '.$option,
                     ];
                 }
             }
@@ -269,7 +281,9 @@ class WarrantyRegistrationController extends Controller
                         'purchase_source_id' => $brandShop?->id,
                         'branch_name' => $branch,
                         'dealer_id' => null,
-                        'purchase_place_label' => 'Brand Shop — '.$branch,
+                        'purchase_place_label' => $inStock
+                            ? 'Current branch — '.$branch
+                            : 'Brand Shop — '.$branch,
                     ];
                 }
 
@@ -277,20 +291,24 @@ class WarrantyRegistrationController extends Controller
                     'purchase_source_id' => $dealerSource?->id,
                     'branch_name' => null,
                     'dealer_id' => $dealer->id,
-                    'purchase_place_label' => $dealer->name,
+                    'purchase_place_label' => $inStock
+                        ? 'Current seller — '.$dealer->name
+                        : $dealer->name,
                 ];
             }
         }
 
-        // POS sale without a recognised branch still defaults to Brand Shop (K-Elec tills).
-        if (filled($sale['odoo_pos_order_id'] ?? null)) {
+        // POS sale or current stock at a known branch defaults to Brand Shop (K-Elec tills / WH).
+        if (filled($sale['odoo_pos_order_id'] ?? null) || $inStock) {
             $branch = $this->normalizeBrandShopBranch($rawBranch);
 
             return [
                 'purchase_source_id' => $brandShop?->id,
                 'branch_name' => $branch,
                 'dealer_id' => null,
-                'purchase_place_label' => $branch ? 'Brand Shop — '.$branch : 'Brand Shop',
+                'purchase_place_label' => $branch
+                    ? ($inStock ? 'Current branch — '.$branch : 'Brand Shop — '.$branch)
+                    : ($inStock ? 'In stock (branch unknown)' : 'Brand Shop'),
             ];
         }
 

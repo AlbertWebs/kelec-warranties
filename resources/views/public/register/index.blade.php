@@ -116,16 +116,16 @@
 
             <div class="mt-4 rounded-xl border px-4 py-3 text-sm"
                  :class="serialValidated
-                    ? 'border-green-200 bg-green-50 text-green-800'
+                    ? (saleStatus === 'in_stock' ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-green-200 bg-green-50 text-green-800')
                     : 'border-amber-200 bg-amber-50 text-amber-900'">
                 <div class="flex items-start gap-3">
                     <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-                         :class="serialValidated ? 'bg-green-600 text-white' : 'bg-amber-500 text-white'">
-                        <svg x-show="serialValidated" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
-                        <svg x-show="!serialValidated" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+                         :class="serialValidated && saleStatus !== 'in_stock' ? 'bg-green-600 text-white' : 'bg-amber-500 text-white'">
+                        <svg x-show="serialValidated && saleStatus !== 'in_stock'" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                        <svg x-show="!serialValidated || saleStatus === 'in_stock'" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
                     </div>
                     <div>
-                        <p class="font-semibold" x-text="serialValidated ? 'Serial validated' : 'Manual verification needed'"></p>
+                        <p class="font-semibold" x-text="saleStatus === 'in_stock' ? 'In stock — not sold yet' : (serialValidated ? 'Serial validated' : 'Manual verification needed')"></p>
                         <p class="mt-1" x-text="serialMessage"></p>
                     </div>
                 </div>
@@ -310,6 +310,7 @@ function warrantyWizard() {
         serialError: '',
         serialValidated: @json($serialValidatedInitially),
         serialMessage: initialSerialResult?.message || '',
+        saleStatus: initialPrefill.sale_status || initialSerialResult?.odoo?.sale?.sale_status || '',
         purchaseSourceId: initialPrefill.purchase_source_id ? String(initialPrefill.purchase_source_id) : '',
         dealerId: initialPrefill.dealer_id ? String(initialPrefill.dealer_id) : '',
         brandShopSourceId: @json(isset($brandShopSourceId) ? (string) $brandShopSourceId : ''),
@@ -429,6 +430,7 @@ function warrantyWizard() {
                 this.serialNumber = (payload.prefill?.serial_number || serial).toUpperCase();
                 this.serialValidated = Boolean(payload.validated);
                 this.serialMessage = payload.message || '';
+                this.saleStatus = payload.sale_status || payload.prefill?.sale_status || '';
                 this.applyPrefill(payload.prefill || {});
                 this.step = 2;
                 window.scrollTo({ top: 0, behavior: 'smooth' });

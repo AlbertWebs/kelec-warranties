@@ -88,9 +88,19 @@ class WarrantyRegistrationService
                 ?: ($odooProduct['model'] ?? null)
                 ?: $localProduct->customerFacingName();
 
-            $hasSaleDetails = filled($odooSale['purchase_date'] ?? null) || filled($odooSale['invoice_number'] ?? null);
+            $hasSaleDetails = ($odooSale['sale_status'] ?? null) === 'sold'
+                || filled($odooSale['odoo_pos_order_id'] ?? null)
+                || filled($odooSale['purchase_date'] ?? null)
+                || filled($odooSale['invoice_number'] ?? null);
+            $inStock = ($odooSale['sale_status'] ?? null) === 'in_stock';
+
             $message = 'Serial number validated successfully.';
-            if (is_array($odoo) && ! $hasSaleDetails) {
+            if ($inStock) {
+                $branch = $odooSale['branch_name'] ?? null;
+                $message = 'Product found in stock'
+                    .($branch ? ' at '.$branch : '')
+                    .'. This unit was transferred internally and is not sold yet. Place of purchase is prefilled from the current branch — add purchase date and invoice after the customer buys it.';
+            } elseif (is_array($odoo) && ! $hasSaleDetails) {
                 $message = 'Product found. Sale details were not automatically retrieved from Odoo, so please confirm purchase information.';
             }
 
@@ -112,6 +122,8 @@ class WarrantyRegistrationService
                         'invoice_number' => $odooSale['invoice_number'] ?? null,
                         'branch_name' => $odooSale['branch_name'] ?? null,
                         'odoo_pos_order_id' => $odooSale['odoo_pos_order_id'] ?? null,
+                        'sale_status' => $odooSale['sale_status'] ?? ($hasSaleDetails ? 'sold' : null),
+                        'current_location' => $odooSale['current_location'] ?? null,
                     ],
                     'customer' => $odooCustomer,
                 ],
@@ -128,7 +140,7 @@ class WarrantyRegistrationService
 
         return [
             'status' => 'found',
-            'message' => 'Serial number validated successfully.',
+            'message' => $odoo['message'] ?? 'Serial number validated successfully.',
             'odoo' => $odoo,
         ];
     }
