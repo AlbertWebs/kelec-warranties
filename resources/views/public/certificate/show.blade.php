@@ -10,7 +10,7 @@
         \App\Enums\WarrantyStatus::Submitted,
         \App\Enums\WarrantyStatus::UnderReview,
     ], true);
-    $lookupUrl = route('warranty.lookup', ['reference' => $warranty->reference]);
+    $lookupUrl = route('warranty.lookup', ['serial' => $warranty->serial_number]);
 @endphp
 
 <div class="mx-auto max-w-3xl">
@@ -60,7 +60,7 @@
                    class="btn-brand inline-flex flex-1 items-center justify-center px-5 py-3 text-center sm:flex-none">
                     Download PDF
                 </a>
-                <a href="{{ route('warranty.lookup', ['reference' => $warranty->reference]) }}"
+                <a href="{{ route('warranty.lookup', ['serial' => $warranty->serial_number]) }}"
                    class="inline-flex flex-1 items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 font-semibold text-brand-ink hover:border-brand hover:text-brand sm:flex-none">
                     Secure lookup
                 </a>
@@ -73,7 +73,7 @@
             <div class="mt-8 grid gap-6 rounded-xl border border-gray-100 bg-gray-50/80 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
                 <div>
                     <h2 class="text-sm font-semibold text-brand-ink">Secure lookup QR</h2>
-                    <p class="mt-1 text-sm text-gray-600">Scan to open lookup. Mobile verification is still required.</p>
+                    <p class="mt-1 text-sm text-gray-600">Scan to open lookup. Serial is prefilled; enter your registered mobile to verify.</p>
                     <p class="mt-3 break-all text-xs text-brand">
                         <a href="{{ $lookupUrl }}" class="hover:underline">{{ $lookupUrl }}</a>
                     </p>

@@ -129,7 +129,7 @@ class WarrantyRegistrationController extends Controller
                 'message' => 'Thank you. Your warranty registration has been submitted successfully.',
                 'reference' => $warranty->reference,
                 'next_url' => route('register-warranty.success', $warranty->reference),
-                'lookup_url' => route('warranty.lookup', ['reference' => $warranty->reference]),
+                'lookup_url' => route('warranty.lookup', ['serial' => $warranty->serial_number]),
                 'certificate_url' => route('warranty.certificate', $warranty->reference),
             ]);
         }

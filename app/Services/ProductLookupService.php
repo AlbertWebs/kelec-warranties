@@ -151,24 +151,22 @@ class ProductLookupService
      */
     protected function resolveRegistrationStatus(string $query, Product $product): array
     {
-        $serials = array_values(array_unique(array_filter([
-            $query,
-            $product->serial_number,
-            $product->barcode,
-        ])));
+        $candidates = array_values(array_unique(array_filter([
+            trim($query),
+            strtoupper(trim($query)),
+        ], fn (string $value) => $value !== '')));
 
-        foreach ($serials as $serial) {
-            $warranty = Warranty::query()
-                ->where('serial_number', $serial)
-                ->latest('id')
-                ->first(['id', 'reference', 'serial_number']);
+        // Only an exact warranty serial match means this unit is already registered.
+        $warranty = Warranty::query()
+            ->whereIn('serial_number', $candidates)
+            ->latest('id')
+            ->first(['id', 'reference', 'serial_number']);
 
-            if ($warranty) {
-                return [
-                    'is_registered' => true,
-                    'warranty_reference' => $warranty->reference,
-                ];
-            }
+        if ($warranty) {
+            return [
+                'is_registered' => true,
+                'warranty_reference' => $warranty->reference,
+            ];
         }
 
         return [

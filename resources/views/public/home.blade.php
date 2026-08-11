@@ -19,8 +19,8 @@
             "description": "Register and track your appliance warranty with confidence.",
             "potentialAction": {
                 "@@type": "SearchAction",
-                "target": "{{ route('warranty.lookup') }}?reference={warranty_reference}",
-                "query-input": "required name=warranty_reference"
+                "target": "{{ route('warranty.lookup') }}?serial={serial_number}",
+                "query-input": "required name=serial_number"
             }
         }
     </script>
@@ -94,7 +94,7 @@
                     </span>
                     <div>
                         <p class="text-sm font-semibold text-brand-ink">Secure lookup</p>
-                        <p class="text-xs text-slate-600">Use your reference and registered mobile number to check coverage and warranty status securely.</p>
+                        <p class="text-xs text-slate-600">Use your serial number and registered mobile number to check coverage and warranty status securely.</p>
                     </div>
                 </div>
 

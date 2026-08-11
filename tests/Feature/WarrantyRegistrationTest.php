@@ -158,12 +158,19 @@ class WarrantyRegistrationTest extends TestCase
         Storage::disk('local')->assertExists($warranty->receipt_path);
     }
 
-    public function test_lookup_requires_mobile_and_returns_masked_details(): void
+    public function test_lookup_requires_serial_and_mobile_and_returns_masked_details(): void
     {
         $warranty = Warranty::factory()->create([
             'status' => WarrantyStatus::Active,
             'serial_number' => 'LOOKUP12345',
         ]);
+
+        $this->from(route('warranty.lookup'))
+            ->post(route('warranty.lookup.store'), [
+                'mobile_number' => $warranty->customer->mobile_number,
+            ])
+            ->assertRedirect(route('warranty.lookup'))
+            ->assertSessionHasErrors('serial_number');
 
         $response = $this->post(route('warranty.lookup.store'), [
             'serial_number' => 'LOOKUP12345',
@@ -174,6 +181,22 @@ class WarrantyRegistrationTest extends TestCase
         $response->assertSee($warranty->reference);
         $response->assertSee($warranty->customer->maskedMobile());
         $response->assertDontSee($warranty->customer->mobile_normalized);
+    }
+
+    public function test_lookup_rejects_reference_only_requests(): void
+    {
+        $warranty = Warranty::factory()->create([
+            'status' => WarrantyStatus::Active,
+            'serial_number' => 'LOOKUPREF001',
+        ]);
+
+        $this->from(route('warranty.lookup'))
+            ->post(route('warranty.lookup.store'), [
+                'reference' => $warranty->reference,
+                'mobile_number' => $warranty->customer->mobile_number,
+            ])
+            ->assertRedirect(route('warranty.lookup'))
+            ->assertSessionHasErrors('serial_number');
     }
 
     public function test_support_user_cannot_access_settings(): void

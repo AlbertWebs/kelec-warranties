@@ -14,18 +14,16 @@ class WarrantyLookupRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'serial_number' => ['required', 'string', 'max:100'],
             'mobile_number' => ['required', 'string', 'max:20'],
-            'reference' => ['nullable', 'string', 'max:50'],
-            'serial_number' => ['nullable', 'string', 'max:100'],
         ];
     }
 
-    public function withValidator($validator): void
+    public function messages(): array
     {
-        $validator->after(function ($validator) {
-            if (! $this->filled('reference') && ! $this->filled('serial_number')) {
-                $validator->errors()->add('reference', 'Provide a warranty reference or serial number.');
-            }
-        });
+        return [
+            'serial_number.required' => 'Enter the product serial number.',
+            'mobile_number.required' => 'Enter the mobile number used at registration.',
+        ];
     }
 }

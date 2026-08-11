@@ -26,11 +26,11 @@ class SerialCheckAjaxTest extends TestCase
     public function test_ajax_serial_check_returns_json_for_local_product(): void
     {
         Product::factory()->create([
-            'barcode' => 'AJAX-SERIAL-1',
+            'barcode' => 'AJAX-BARCODE-1',
             'name' => 'Ajax Cooker',
             'display_name' => 'Ajax Cooker',
             'model' => 'AX-1',
-            'serial_number' => null,
+            'serial_number' => 'AJAX-SERIAL-1',
         ]);
 
         $this->postJson(route('register-warranty.serial-check'), [

@@ -57,7 +57,7 @@
         <div class="px-6 py-6 sm:px-10">
             @include('public.partials.warranty-summary', [
                 'warranty' => $warranty,
-                'referenceHint' => 'Keep this reference with your registered mobile for future lookups.',
+                'referenceHint' => 'Keep your serial number and registered mobile for future lookups.',
                 'fields' => [
                     ['label' => 'Customer', 'value' => $warranty->customer->maskedName()],
                     ['label' => 'Mobile', 'value' => $warranty->customer->maskedMobile()],
@@ -100,7 +100,7 @@
                 </a>
                 <form method="POST" action="{{ route('warranty.lookup.resend') }}" class="flex-1 sm:flex-none">
                     @csrf
-                    <input type="hidden" name="reference" value="{{ $warranty->reference }}">
+                    <input type="hidden" name="serial_number" value="{{ $warranty->serial_number }}">
                     <input type="hidden" name="mobile_number" value="{{ $warranty->customer->mobile_number }}">
                     <button class="inline-flex w-full items-center justify-center rounded-lg border border-gray-300 bg-white px-5 py-3 font-semibold text-brand-ink hover:border-brand hover:text-brand">
                         Resend details
@@ -113,7 +113,7 @@
     <div class="mt-6 grid gap-4 sm:grid-cols-2">
         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 class="text-sm font-semibold text-brand-ink">Need help?</h2>
-            <p class="mt-2 text-sm text-gray-600">Contact support with your warranty reference.</p>
+            <p class="mt-2 text-sm text-gray-600">Contact support with your serial number.</p>
             <a href="{{ support_phone_tel() }}" class="mt-3 inline-block text-sm font-semibold text-brand hover:underline">{{ support_phone() }}</a>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">

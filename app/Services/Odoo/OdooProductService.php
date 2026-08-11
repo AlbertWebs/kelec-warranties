@@ -22,44 +22,8 @@ class OdooProductService
      */
     public function lookupBySerial(string $serialNumber): array
     {
-        $serialNumber = trim($serialNumber);
-        $result = $this->client->validateSerial($serialNumber);
-
-        if ($result['found'] ?? false) {
-            return $result;
-        }
-
-        // Product lookup can match barcode/SKU/name even when no stock.lot/POS pack lot exists yet.
-        foreach ($this->queryCandidates($serialNumber) as $candidate) {
-            $odooProduct = $this->searchProduct($candidate, allowFuzzyName: false);
-            if (! $odooProduct) {
-                continue;
-            }
-
-            $product = $this->upsertProductFromOdoo($odooProduct);
-
-            return [
-                'found' => true,
-                'message' => 'Product matched in Odoo catalog.',
-                'product' => [
-                    'id' => $product->id,
-                    'odoo_product_id' => $product->odoo_product_id ?: $product->odoo_id,
-                    'odoo_serial_id' => null,
-                    'name' => $product->customerFacingName(),
-                    'model' => $product->model ?: $product->default_code ?: $product->sku ?: $product->customerFacingName(),
-                    'category_id' => $product->product_category_id,
-                ],
-                'sale' => [
-                    'purchase_date' => null,
-                    'invoice_number' => null,
-                    'branch_name' => null,
-                    'odoo_pos_order_id' => null,
-                ],
-                'customer' => null,
-            ];
-        }
-
-        return $result;
+        // Unit serial / stock lot validation only (no catalog barcode/SKU fallback).
+        return $this->client->validateSerial(trim($serialNumber));
     }
 
     /**
@@ -208,7 +172,6 @@ class OdooProductService
             'product_code' => $defaultCode,
             'sku' => $defaultCode,
             'barcode' => $barcode,
-            'serial_number' => $barcode,
             'model' => $defaultCode,
             'product_type' => $this->nullIfEmpty($odooProduct['type'] ?? null),
             'category_id' => $category['id'],
@@ -258,6 +221,9 @@ class OdooProductService
         if (! $existing && ! empty($mapped['barcode'])) {
             $existing = Product::query()->where('barcode', $mapped['barcode'])->first();
         }
+
+        // Catalog sync must never invent or overwrite unit serials (barcode was previously stored here).
+        unset($mapped['serial_number']);
 
         if ($existing) {
             $existing->fill($mapped)->save();

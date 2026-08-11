@@ -14,7 +14,6 @@ class WarrantyLookupController extends Controller
     public function lookup(WarrantyLookupRequest $request): JsonResponse
     {
         $warranty = $this->warrantyQueryService->lookup(
-            $request->validated('reference'),
             $request->validated('serial_number'),
             $request->validated('mobile_number'),
         );

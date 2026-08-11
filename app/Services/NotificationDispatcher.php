@@ -67,7 +67,7 @@ class NotificationDispatcher
             '{{warranty_status}}' => $warranty->status instanceof WarrantyStatus ? $warranty->status->label() : (string) $warranty->status,
             '{{support_phone}}' => $phoneDisplay,
             '{{support_email}}' => $supportEmail,
-            '{{lookup_link}}' => url('/warranty-lookup?reference='.$warranty->reference),
+            '{{lookup_link}}' => url('/warranty-lookup?serial='.urlencode((string) $warranty->serial_number)),
         ];
 
         $emailBody = strtr($template?->email_body ?? $this->defaultEmailBody($type), $replacements);
@@ -228,7 +228,7 @@ class NotificationDispatcher
     protected function defaultEmailBody(string $type): string
     {
         return match ($type) {
-            'warranty_pending_verification' => "Hello {{customer_name}},\n\nYour warranty registration {{warranty_reference}} for {{product_name}} ({{serial_number}}) has been received and is pending verification.\nLookup: {{lookup_link}} (use your reference and registered mobile number)\n\nSupport: {{support_phone}} / {{support_email}}",
+            'warranty_pending_verification' => "Hello {{customer_name}},\n\nYour warranty registration {{warranty_reference}} for {{product_name}} ({{serial_number}}) has been received and is pending verification.\nLookup: {{lookup_link}} (use your serial number and registered mobile number)\n\nSupport: {{support_phone}} / {{support_email}}",
             'warranty_rejected' => "Hello {{customer_name}},\n\nYour warranty registration {{warranty_reference}} could not be approved. Please contact support for assistance.\n\nSupport: {{support_phone}} / {{support_email}}",
             'pos_warranty_registered' => "Hello {{customer_name}},\n\nYour Brand Shop purchase has been registered automatically.\nWarranty {{warranty_reference}} for {{product_name}} ({{serial_number}}) is {{warranty_status}}.\nExpiry: {{warranty_expiry_date}}\nLookup: {{lookup_link}}",
             'customer_details_completion' => "Hello {{customer_name}},\n\nYour K-Elec warranty {{warranty_reference}} was created from a Brand Shop purchase. Please complete your contact details using the secure link sent by SMS/email.",
@@ -272,7 +272,7 @@ class NotificationDispatcher
             return $message;
         }
 
-        return rtrim($message)."\nLookup: {$lookupLink} (use your warranty reference and registered mobile number).";
+        return rtrim($message)."\nLookup: {$lookupLink} (use your serial number and registered mobile number).";
     }
 
     protected function sanitizeSmsBody(string $message): string

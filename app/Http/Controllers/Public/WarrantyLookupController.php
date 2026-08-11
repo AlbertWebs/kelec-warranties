@@ -20,15 +20,16 @@ class WarrantyLookupController extends Controller
     public function create(Request $request): View
     {
         return view('public.lookup.index', [
-            'reference' => old('reference', $request->query('reference')),
-            'serial_number' => old('serial_number', $request->query('serial', $request->session()->get('lookup_serial'))),
+            'serial_number' => old(
+                'serial_number',
+                $request->query('serial', $request->session()->get('lookup_serial'))
+            ),
         ]);
     }
 
     public function store(WarrantyLookupRequest $request): RedirectResponse|View
     {
         $warranty = $this->queryService->lookup(
-            $request->validated('reference'),
             $request->validated('serial_number'),
             $request->validated('mobile_number'),
         );
@@ -36,7 +37,7 @@ class WarrantyLookupController extends Controller
         if (! $warranty) {
             return back()
                 ->withInput()
-                ->withErrors(['mobile_number' => 'No warranty matched the details provided. Please check and try again.']);
+                ->withErrors(['serial_number' => 'No warranty matched the serial number and mobile provided. Please check and try again.']);
         }
 
         return view('public.lookup.result', compact('warranty'));
@@ -45,19 +46,17 @@ class WarrantyLookupController extends Controller
     public function resend(Request $request): RedirectResponse
     {
         $request->validate([
-            'reference' => ['required', 'string'],
-            'mobile_number' => ['required', 'string'],
-            'channel' => ['nullable', 'in:sms,email,both'],
+            'serial_number' => ['required', 'string', 'max:100'],
+            'mobile_number' => ['required', 'string', 'max:20'],
         ]);
 
         $warranty = $this->queryService->lookup(
-            $request->input('reference'),
-            null,
+            $request->input('serial_number'),
             $request->input('mobile_number'),
         );
 
         if (! $warranty) {
-            return back()->withErrors(['mobile_number' => 'Unable to resend details for the provided information.']);
+            return back()->withErrors(['serial_number' => 'Unable to resend details for the provided information.']);
         }
 
         $this->notificationDispatcher->resend($warranty, 'warranty_lookup');

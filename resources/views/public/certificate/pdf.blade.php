@@ -181,7 +181,7 @@
                 </div>
 
                 <div class="foot">
-                    Secure lookup: {{ route('warranty.lookup', ['reference' => $warranty->reference]) }}<br>
+                    Secure lookup: {{ route('warranty.lookup', ['serial' => $warranty->serial_number]) }}<br>
                     Warranty terms: {{ route('warranty-terms') }}
                 </div>
             </div>

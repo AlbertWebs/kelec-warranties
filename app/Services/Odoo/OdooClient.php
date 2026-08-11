@@ -123,16 +123,11 @@ class OdooClient
 
         try {
             $uid = $this->authenticate();
+            // Warranty registration validates unit serials/lots only — never catalog barcode/SKU/name.
             $match = $this->findSerialMatch($uid, $serialNumber);
 
-            // If the entered value is a product code/barcode (common for TVs), resolve the product
-            // and pull the latest POS sale for that product.
             if ($match === null) {
-                $match = $this->findProductCodeMatch($uid, $serialNumber);
-            }
-
-            if ($match === null) {
-                $this->log('validate_serial', 'stock.lot|pos.pack.operation.lot|product.product', 404, 'Serial not found', 'not_found', $serialNumber);
+                $this->log('validate_serial', 'stock.lot|pos.pack.operation.lot', 404, 'Serial not found', 'not_found', $serialNumber);
 
                 return ['found' => false, 'message' => 'Serial number not found in Odoo.'];
             }

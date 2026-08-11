@@ -11,31 +11,21 @@ class WarrantyQueryService
 {
     public function __construct(protected PhoneNumberService $phoneNumberService) {}
 
-    public function lookup(?string $reference, ?string $serialNumber, ?string $mobileNumber): ?Warranty
+    public function lookup(?string $serialNumber, ?string $mobileNumber): ?Warranty
     {
         $normalizedMobile = $this->phoneNumberService->normalize($mobileNumber);
+        $serial = strtoupper(trim((string) $serialNumber));
 
-        if (! $normalizedMobile) {
+        if (! $normalizedMobile || $serial === '') {
             return null;
         }
 
-        $query = Warranty::query()
+        return Warranty::query()
             ->with(['customer', 'product', 'purchaseSource', 'dealer'])
-            ->whereHas('customer', fn ($q) => $q->where('mobile_normalized', $normalizedMobile));
-
-        if ($reference) {
-            $query->where('reference', strtoupper(trim($reference)));
-        }
-
-        if ($serialNumber) {
-            $query->where('serial_number', strtoupper(trim($serialNumber)));
-        }
-
-        if (! $reference && ! $serialNumber) {
-            return null;
-        }
-
-        return $query->latest()->first();
+            ->where('serial_number', $serial)
+            ->whereHas('customer', fn ($q) => $q->where('mobile_normalized', $normalizedMobile))
+            ->latest()
+            ->first();
     }
 
     /**

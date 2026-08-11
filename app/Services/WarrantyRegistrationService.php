@@ -299,17 +299,9 @@ class WarrantyRegistrationService
             return null;
         }
 
+        // Only match true unit serials stored on products — never SKU/model/barcode catalog codes.
         return Product::query()
-            ->where(function ($query) use ($candidates) {
-                $query->whereIn('serial_number', $candidates)
-                    ->orWhereIn('barcode', $candidates)
-                    ->orWhereIn('default_code', $candidates)
-                    ->orWhereIn('sku', $candidates)
-                    ->orWhereIn('product_code', $candidates)
-                    ->orWhereIn('odoo_id', $candidates)
-                    ->orWhereIn('odoo_product_id', $candidates)
-                    ->orWhereIn('model', $candidates);
-            })
+            ->whereIn('serial_number', $candidates)
             ->first();
     }
 }

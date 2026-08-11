@@ -9,26 +9,21 @@
             <p class="text-xs font-semibold uppercase tracking-wider text-brand">Secure lookup</p>
             <h1 class="mt-2 text-3xl font-bold tracking-tight text-brand-ink">Find your warranty</h1>
             <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-gray-600">
-                Enter your warranty reference or serial number, plus the mobile number used at registration.
+                Enter the product serial number and the mobile number used at registration.
             </p>
         </div>
 
         <form method="POST" action="{{ route('warranty.lookup.store') }}" class="space-y-4 px-6 py-6 sm:px-8" @submit.prevent="search">
             @csrf
             <div>
-                <label class="mb-1 block text-sm font-medium text-brand-ink">Warranty reference</label>
-                <input name="reference" x-model="form.reference" value="{{ $reference }}" :disabled="loading"
-                       class="w-full rounded-lg border-gray-300 focus:border-brand focus:ring-brand"
-                       placeholder="KEL-WTY-2026-000001"
-                       autocomplete="off">
-            </div>
-            <div>
                 <label class="mb-1 block text-sm font-medium text-brand-ink">Serial number</label>
-                <input name="serial_number" x-model="form.serial_number" value="{{ $serial_number ?? request('serial') }}" :disabled="loading"
+                <input name="serial_number" x-model="form.serial_number" value="{{ $serial_number ?? '' }}" required :disabled="loading"
                        class="w-full rounded-lg border-gray-300 focus:border-brand focus:ring-brand"
                        placeholder="Product serial"
                        autocomplete="off">
-                <p class="mt-1 text-xs text-gray-500">Provide reference or serial (or both). QR links prefill these fields.</p>
+                @error('serial_number')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
             <div>
                 <label class="mb-1 block text-sm font-medium text-brand-ink">Registered mobile number</label>
@@ -38,15 +33,17 @@
                        inputmode="tel"
                        autocomplete="tel">
                 <p class="mt-1 text-xs text-gray-500">Required for privacy verification.</p>
+                @error('mobile_number')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
             </div>
             <button class="btn-brand flex w-full items-center justify-center gap-2 py-3 disabled:cursor-not-allowed disabled:opacity-70" :disabled="loading">
                 <svg x-show="loading" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="12" cy="12" r="10" class="opacity-20" stroke="currentColor" stroke-width="3"></circle>
                     <path d="M22 12a10 10 0 00-10-10" class="opacity-90" stroke="currentColor" stroke-width="3"></path>
                 </svg>
-                <span x-text="loading ? 'Searching for your product...' : 'Search warranty'"></span>
+                <span x-text="loading ? 'Searching…' : 'Search warranty'"></span>
             </button>
-            <p x-show="loading" class="text-center text-sm text-slate-500">Searching for your product...</p>
         </form>
     </div>
 
@@ -88,9 +85,8 @@ function warrantyLookupAjax() {
         error: '',
         result: null,
         form: {
-            reference: @js($reference),
-            serial_number: @js($serial_number ?? request('serial')),
-            mobile_number: @js(old('mobile_number')),
+            serial_number: @js($serial_number ?? ''),
+            mobile_number: @js(old('mobile_number', '')),
         },
         async search() {
             if (this.loading) return;
@@ -112,7 +108,7 @@ function warrantyLookupAjax() {
                 const payload = await response.json();
 
                 if (!response.ok || !payload.success) {
-                    this.error = payload.message || 'No warranty matched the details provided. Please check and try again.';
+                    this.error = payload.message || 'No warranty matched the serial number and mobile provided. Please check and try again.';
                     return;
                 }
 
