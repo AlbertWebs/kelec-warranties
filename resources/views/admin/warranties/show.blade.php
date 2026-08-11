@@ -71,7 +71,7 @@
             <form method="POST" action="{{ route('admin.warranties.resend', $warranty) }}">
                 @csrf
                 <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-brand-ink shadow-sm transition hover:bg-slate-50">
-                    Resend notification
+                    Send notification
                 </button>
             </form>
         @endcan

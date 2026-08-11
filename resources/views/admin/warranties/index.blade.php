@@ -231,12 +231,27 @@
                         </td>
                         <td class="px-4 py-3.5 align-top"><x-admin.status-badge :status="$warranty->status" /></td>
                         <td class="px-4 py-3.5 align-top text-right">
-                            <a href="{{ route('admin.warranties.show', $warranty) }}" class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-slate-500 opacity-70 transition hover:bg-white hover:text-brand group-hover:opacity-100">
-                                View
-                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-                                </svg>
-                            </a>
+                            <div class="inline-flex items-center justify-end gap-1 opacity-70 transition group-hover:opacity-100">
+                                @can('resendNotification', $warranty)
+                                    <form method="POST" action="{{ route('admin.warranties.resend', $warranty) }}" class="inline">
+                                        @csrf
+                                        <button
+                                            type="submit"
+                                            class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-slate-500 transition hover:bg-white hover:text-brand"
+                                            title="Send email and SMS notification"
+                                            onclick="return confirm('Send notification to {{ addslashes($warranty->customer?->full_name ?? 'customer') }}?');"
+                                        >
+                                            Notify
+                                        </button>
+                                    </form>
+                                @endcan
+                                <a href="{{ route('admin.warranties.show', $warranty) }}" class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-slate-500 transition hover:bg-white hover:text-brand">
+                                    View
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                 @empty
@@ -263,34 +278,53 @@
         @php
             $expiry = $warranty->warranty_expiry_date;
         @endphp
-        <a href="{{ route('admin.warranties.show', $warranty) }}"
-           class="block rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand/30 hover:shadow">
-            <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0">
-                    <p class="font-mono text-sm font-semibold text-brand">{{ $warranty->reference }}</p>
-                    <p class="mt-1 truncate font-medium text-brand-ink">{{ $warranty->customer?->full_name ?? '—' }}</p>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand/30 hover:shadow">
+            <a href="{{ route('admin.warranties.show', $warranty) }}" class="block">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="font-mono text-sm font-semibold text-brand">{{ $warranty->reference }}</p>
+                        <p class="mt-1 truncate font-medium text-brand-ink">{{ $warranty->customer?->full_name ?? '—' }}</p>
+                    </div>
+                    <x-admin.status-badge :status="$warranty->status" />
                 </div>
-                <x-admin.status-badge :status="$warranty->status" />
+                <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
+                    <div>
+                        <p class="uppercase tracking-wide text-slate-400">Product</p>
+                        <p class="mt-0.5 truncate font-medium text-slate-700">{{ $warranty->displayProductName() }}</p>
+                    </div>
+                    <div>
+                        <p class="uppercase tracking-wide text-slate-400">Serial</p>
+                        <p class="mt-0.5 font-mono font-medium text-slate-700">{{ $warranty->serial_number }}</p>
+                    </div>
+                    <div>
+                        <p class="uppercase tracking-wide text-slate-400">Source</p>
+                        <p class="mt-0.5 font-medium text-slate-700">{{ $warranty->purchaseSource?->name ?? '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="uppercase tracking-wide text-slate-400">Expiry</p>
+                        <p class="mt-0.5 font-medium text-slate-700">{{ optional($expiry)->format('d M Y') ?? '—' }}</p>
+                    </div>
+                </div>
+            </a>
+            <div class="mt-3 flex items-center gap-2 border-t border-slate-100 pt-3">
+                @can('resendNotification', $warranty)
+                    <form method="POST" action="{{ route('admin.warranties.resend', $warranty) }}" class="flex-1">
+                        @csrf
+                        <button
+                            type="submit"
+                            class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-brand-ink transition hover:bg-slate-50"
+                            onclick="return confirm('Send notification to {{ addslashes($warranty->customer?->full_name ?? 'customer') }}?');"
+                        >
+                            Notify
+                        </button>
+                    </form>
+                @endcan
+                <a href="{{ route('admin.warranties.show', $warranty) }}"
+                   class="flex-1 rounded-lg bg-brand-navy px-3 py-2 text-center text-sm font-semibold text-white transition hover:bg-brand-ink">
+                    View
+                </a>
             </div>
-            <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
-                <div>
-                    <p class="uppercase tracking-wide text-slate-400">Product</p>
-                    <p class="mt-0.5 truncate font-medium text-slate-700">{{ $warranty->displayProductName() }}</p>
-                </div>
-                <div>
-                    <p class="uppercase tracking-wide text-slate-400">Serial</p>
-                    <p class="mt-0.5 font-mono font-medium text-slate-700">{{ $warranty->serial_number }}</p>
-                </div>
-                <div>
-                    <p class="uppercase tracking-wide text-slate-400">Source</p>
-                    <p class="mt-0.5 font-medium text-slate-700">{{ $warranty->purchaseSource?->name ?? '—' }}</p>
-                </div>
-                <div>
-                    <p class="uppercase tracking-wide text-slate-400">Expiry</p>
-                    <p class="mt-0.5 font-medium text-slate-700">{{ optional($expiry)->format('d M Y') ?? '—' }}</p>
-                </div>
-            </div>
-        </a>
+        </div>
     @empty
         <div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center">
             <p class="text-sm font-semibold text-brand-ink">No warranties found</p>

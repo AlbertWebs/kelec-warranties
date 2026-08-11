@@ -161,7 +161,7 @@ class WarrantyController extends Controller
 
         $this->notificationDispatcher->resend($warranty, $type);
 
-        return back()->with('success', 'Notification resent.');
+        return back()->with('success', 'Notification sent to the customer.');
     }
 
     public function export(Request $request): StreamedResponse
