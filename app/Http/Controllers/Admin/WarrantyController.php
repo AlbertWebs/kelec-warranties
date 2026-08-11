@@ -93,6 +93,7 @@ class WarrantyController extends Controller
             'branch_name' => ['nullable', 'string', 'max:150'],
             'purchase_date' => ['nullable', 'date'],
             'invoice_number' => ['nullable', 'string', 'max:100'],
+            'warranty_duration_months' => ['nullable', 'integer', 'min:1', 'max:120'],
             'warranty_start_date' => ['nullable', 'date'],
             'warranty_expiry_date' => ['nullable', 'date', 'after_or_equal:warranty_start_date'],
             'customer_notes' => ['nullable', 'string'],

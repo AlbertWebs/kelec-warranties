@@ -105,6 +105,9 @@
     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Warranty start</p>
         <p class="mt-1 text-lg font-semibold text-brand-ink">{{ optional($warranty->warranty_start_date)->format('d M Y') ?? '—' }}</p>
+        <p class="mt-0.5 text-xs text-slate-500">
+            {{ $warranty->warranty_duration_months ? $warranty->warranty_duration_months.' months coverage' : 'Duration not set' }}
+        </p>
     </div>
     <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Expiry</p>
@@ -222,6 +225,42 @@
                         <label class="auth-label" for="branch_name">Branch</label>
                         <input id="branch_name" name="branch_name" value="{{ old('branch_name', $warranty->branch_name) }}" class="auth-input">
                     </div>
+
+                    <div class="sm:col-span-2 mt-1 border-t border-slate-100 pt-4">
+                        <h3 class="text-sm font-semibold text-brand-ink">Warranty period</h3>
+                        <p class="mt-1 text-sm text-slate-500">Update coverage length for this record. Expiry is recalculated from the warranty start date when you save, unless you set expiry manually.</p>
+                    </div>
+                    <div class="auth-field">
+                        <label class="auth-label" for="warranty_duration_months">Warranty period (months)</label>
+                        <input
+                            id="warranty_duration_months"
+                            type="number"
+                            min="1"
+                            max="120"
+                            name="warranty_duration_months"
+                            value="{{ old('warranty_duration_months', $warranty->warranty_duration_months) }}"
+                            class="auth-input"
+                            placeholder="36"
+                        >
+                    </div>
+                    <div class="auth-field">
+                        <label class="auth-label" for="warranty_start_date">Warranty start date</label>
+                        <input
+                            id="warranty_start_date"
+                            type="date"
+                            name="warranty_start_date"
+                            value="{{ old('warranty_start_date', optional($warranty->warranty_start_date ?? $warranty->purchase_date)->toDateString()) }}"
+                            class="auth-input"
+                        >
+                    </div>
+                    <div class="auth-field sm:col-span-2">
+                        <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Warranty expiry date</p>
+                        <p class="mt-1 text-sm font-semibold text-brand-ink">
+                            {{ optional($warranty->warranty_expiry_date)->format('d M Y') ?? '—' }}
+                        </p>
+                        <p class="mt-1 text-xs text-slate-500">Recalculated automatically when you change the period or start date.</p>
+                    </div>
+
                     <div class="auth-field sm:col-span-2">
                         <label class="auth-label" for="internal_notes">Internal notes</label>
                         <textarea id="internal_notes" name="internal_notes" rows="3" class="auth-input" placeholder="Visible only to staff">{{ old('internal_notes', $warranty->internal_notes) }}</textarea>

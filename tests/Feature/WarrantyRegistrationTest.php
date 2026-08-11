@@ -185,6 +185,36 @@ class WarrantyRegistrationTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_warranty_admin_can_update_warranty_duration_on_detail_page(): void
+    {
+        $admin = User::where('email', 'warranty@kelec.test')->firstOrFail();
+        $purchaseDate = now()->subMonths(6)->startOfDay();
+        $warranty = Warranty::factory()->create([
+            'status' => WarrantyStatus::Active,
+            'purchase_date' => $purchaseDate,
+            'warranty_start_date' => $purchaseDate,
+            'warranty_duration_months' => 12,
+            'warranty_expiry_date' => $purchaseDate->copy()->addMonthsNoOverflow(12),
+        ]);
+
+        $this->actingAs($admin)
+            ->put(route('admin.warranties.update', $warranty), [
+                'serial_number' => $warranty->serial_number,
+                'warranty_duration_months' => 36,
+                'warranty_start_date' => $purchaseDate->toDateString(),
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $warranty->refresh();
+        $this->assertSame(36, $warranty->warranty_duration_months);
+        $this->assertSame($purchaseDate->toDateString(), $warranty->warranty_start_date?->toDateString());
+        $this->assertSame(
+            $purchaseDate->copy()->addMonthsNoOverflow(36)->toDateString(),
+            $warranty->warranty_expiry_date?->toDateString()
+        );
+    }
+
     public function test_warranty_admin_can_approve_pending_warranty(): void
     {
         $admin = User::where('email', 'warranty@kelec.test')->firstOrFail();

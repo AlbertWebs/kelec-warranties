@@ -71,7 +71,37 @@ class WarrantyAdminService
      */
     public function update(Warranty $warranty, array $data, User $admin): Warranty
     {
+        $warranty->loadMissing('product.category');
         $previous = $warranty->only(array_keys($data));
+
+        $shouldRecalculatePeriod = array_key_exists('warranty_duration_months', $data)
+            || array_key_exists('warranty_start_date', $data)
+            || array_key_exists('purchase_date', $data);
+
+        if ($shouldRecalculatePeriod) {
+            $duration = (int) (
+                $data['warranty_duration_months']
+                ?? $warranty->warranty_duration_months
+                ?? $this->durationResolver->forProductWithRule($warranty->product)
+            );
+            $data['warranty_duration_months'] = $duration;
+
+            $startInput = $data['warranty_start_date']
+                ?? $data['purchase_date']
+                ?? $warranty->warranty_start_date
+                ?? $warranty->purchase_date;
+
+            if ($startInput) {
+                [$start, $expiry] = $this->eligibilityService->resolvePeriodFromPurchaseDate(
+                    Carbon::parse($startInput),
+                    $duration
+                );
+
+                $data['warranty_start_date'] = $start?->toDateString();
+                $data['warranty_expiry_date'] = $expiry?->toDateString();
+            }
+        }
+
         $warranty->update($data);
         $this->auditLogger->log('warranty_updated', $warranty, $previous, $warranty->only(array_keys($data)));
 
