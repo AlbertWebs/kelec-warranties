@@ -158,11 +158,23 @@ class Warranty extends Model
 
     public function displayProductName(): string
     {
-        return $this->product?->name ?? $this->product_name ?? 'Unknown product';
+        if (filled($this->product_name)) {
+            return $this->product_name;
+        }
+
+        return $this->product?->customerFacingName()
+            ?? $this->product?->name
+            ?? 'Unknown product';
     }
 
     public function displayModel(): ?string
     {
-        return $this->product?->model ?? $this->product_model;
+        if (filled($this->product_model)) {
+            return $this->product_model;
+        }
+
+        return $this->product?->model
+            ?? $this->product?->default_code
+            ?? $this->product?->sku;
     }
 }
