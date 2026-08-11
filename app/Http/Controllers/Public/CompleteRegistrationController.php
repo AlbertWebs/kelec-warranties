@@ -9,6 +9,7 @@ use App\Models\PublicAccessToken;
 use App\Services\AuditLogger;
 use App\Services\NotificationDispatcher;
 use App\Services\PhoneNumberService;
+use App\Services\WarrantyDurationResolver;
 use App\Services\WarrantyEligibilityService;
 use App\Services\WarrantyStatusService;
 use Illuminate\Http\RedirectResponse;
@@ -72,7 +73,7 @@ class CompleteRegistrationController extends Controller
             'marketing_consent_at' => $request->boolean('marketing_consent') ? now() : $customer->marketing_consent_at,
         ]);
 
-        $duration = $warranty->warranty_duration_months ?? 12;
+        $duration = app(WarrantyDurationResolver::class)->forProductWithRule($warranty->product);
         [$start, $expiry] = app(WarrantyEligibilityService::class)
             ->resolvePeriodFromPurchaseDate($warranty->purchase_date, $duration);
 

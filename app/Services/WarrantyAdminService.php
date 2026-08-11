@@ -13,15 +13,15 @@ class WarrantyAdminService
     public function __construct(
         protected WarrantyStatusService $statusService,
         protected WarrantyEligibilityService $eligibilityService,
+        protected WarrantyDurationResolver $durationResolver,
         protected NotificationDispatcher $notificationDispatcher,
         protected AuditLogger $auditLogger,
     ) {}
 
     public function approve(Warranty $warranty, User $admin, ?Carbon $startDate = null): Warranty
     {
-        $duration = $warranty->warranty_duration_months
-            ?? $warranty->product?->resolvedWarrantyMonths()
-            ?? 12;
+        $warranty->loadMissing('product.category');
+        $duration = $this->durationResolver->forProductWithRule($warranty->product);
 
         $purchaseStart = $startDate
             ?? ($warranty->purchase_date ? Carbon::parse($warranty->purchase_date)->startOfDay() : null);
@@ -30,7 +30,7 @@ class WarrantyAdminService
             throw new \InvalidArgumentException('A purchase date is required before a warranty can be activated.');
         }
 
-        [$start, $expiry] = app(WarrantyEligibilityService::class)
+        [$start, $expiry] = $this->eligibilityService
             ->resolvePeriodFromPurchaseDate($purchaseStart, $duration);
 
         $warranty->update([

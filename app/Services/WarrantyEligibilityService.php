@@ -33,9 +33,7 @@ class WarrantyEligibilityService
         }
 
         $rule = $this->resolveRule($product);
-        $duration = $rule?->warranty_duration_months
-            ?? $product?->resolvedWarrantyMonths()
-            ?? (int) app(SettingsService::class)->get('default_warranty_months', 12);
+        $duration = app(WarrantyDurationResolver::class)->forProductWithRule($product);
 
         $graceDays = $rule?->registration_grace_days
             ?? $product?->registration_grace_days
@@ -119,7 +117,7 @@ class WarrantyEligibilityService
             ->first();
     }
 
-    protected function resolveRule(?Product $product): ?WarrantyRule
+    public function resolveRule(?Product $product): ?WarrantyRule
     {
         if (! $product) {
             return WarrantyRule::query()->whereNull('product_id')->whereNull('product_category_id')->where('is_active', true)->first();

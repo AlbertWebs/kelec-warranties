@@ -92,9 +92,7 @@ class Product extends Model
 
     public function resolvedWarrantyMonths(): int
     {
-        return $this->default_warranty_months
-            ?? $this->category?->default_warranty_months
-            ?? 12;
+        return app(WarrantyDurationResolver::class)->forProduct($this);
     }
 
     public function customerFacingName(): string

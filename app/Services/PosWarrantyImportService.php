@@ -134,7 +134,7 @@ class PosWarrantyImportService
                 'registration_date' => now(),
                 'warranty_start_date' => $status === WarrantyStatus::Active ? $eligibility['start_date'] : null,
                 'warranty_expiry_date' => $status === WarrantyStatus::Active ? $eligibility['expiry_date'] : null,
-                'warranty_duration_months' => $eligibility['duration_months'] ?? 12,
+                'warranty_duration_months' => $eligibility['duration_months'] ?? app(WarrantyDurationResolver::class)->forProductWithRule($product),
                 'status' => WarrantyStatus::Submitted,
                 'eligibility_result' => $eligibility['result'] ?? 'pos_import',
                 'odoo_customer_id' => $payload['odoo_customer_id'] ?? null,
