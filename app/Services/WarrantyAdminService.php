@@ -23,12 +23,15 @@ class WarrantyAdminService
             ?? $warranty->product?->resolvedWarrantyMonths()
             ?? 12;
 
-        $start = $startDate
-            ?? $warranty->purchase_date
-            ?? $warranty->registration_date
-            ?? now();
+        $purchaseStart = $startDate
+            ?? ($warranty->purchase_date ? Carbon::parse($warranty->purchase_date)->startOfDay() : null);
 
-        $expiry = Carbon::parse($start)->copy()->addMonthsNoOverflow($duration);
+        if (! $purchaseStart) {
+            throw new \InvalidArgumentException('A purchase date is required before a warranty can be activated.');
+        }
+
+        [$start, $expiry] = app(WarrantyEligibilityService::class)
+            ->resolvePeriodFromPurchaseDate($purchaseStart, $duration);
 
         $warranty->update([
             'warranty_start_date' => $start,

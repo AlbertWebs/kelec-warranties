@@ -53,6 +53,10 @@ class WarrantyRegistrationTest extends TestCase
         $this->assertFalse($warranty->marketing_consent);
         $this->assertEquals(WarrantyStatus::Active, $warranty->status);
         $this->assertStringStartsWith('KEL-WTY-', $warranty->reference);
+        $this->assertSame(
+            now()->subDays(3)->toDateString(),
+            $warranty->warranty_start_date?->toDateString()
+        );
     }
 
     public function test_missing_serial_creates_pending_verification(): void
@@ -184,8 +188,10 @@ class WarrantyRegistrationTest extends TestCase
     public function test_warranty_admin_can_approve_pending_warranty(): void
     {
         $admin = User::where('email', 'warranty@kelec.test')->firstOrFail();
+        $purchaseDate = now()->subDays(45);
         $warranty = Warranty::factory()->create([
             'status' => WarrantyStatus::PendingVerification,
+            'purchase_date' => $purchaseDate,
             'warranty_start_date' => null,
             'warranty_expiry_date' => null,
             'requires_manual_verification' => true,
@@ -197,6 +203,7 @@ class WarrantyRegistrationTest extends TestCase
 
         $warranty->refresh();
         $this->assertEquals(WarrantyStatus::Active, $warranty->status);
+        $this->assertSame($purchaseDate->toDateString(), $warranty->warranty_start_date?->toDateString());
         $this->assertNotNull($warranty->warranty_expiry_date);
     }
 

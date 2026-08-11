@@ -80,24 +80,34 @@ class WarrantyEligibilityService
             }
         }
 
-        $startMethod = $rule?->start_date_method ?? 'purchase_date';
-        $startDate = match ($startMethod) {
-            'registration_date' => now(),
-            'odoo_invoice_date', 'purchase_date' => $purchaseDate ?? now(),
-            default => $purchaseDate ?? now(),
-        };
-
-        $expiryDate = Carbon::parse($startDate)->copy()->addMonthsNoOverflow($duration);
+        [$startDate, $expiryDate] = $this->resolvePeriodFromPurchaseDate($purchaseDate, $duration);
 
         return [
             'eligible' => true,
             'result' => 'eligible',
             'requires_manual_verification' => false,
             'duration_months' => $duration,
-            'start_date' => Carbon::parse($startDate)->startOfDay(),
-            'expiry_date' => $expiryDate->startOfDay(),
-            'start_date_method' => $startMethod,
+            'start_date' => $startDate,
+            'expiry_date' => $expiryDate,
+            'start_date_method' => 'purchase_date',
         ];
+    }
+
+    /**
+     * Warranty coverage always begins on the purchase date, not the registration date.
+     *
+     * @return array{0: ?CarbonInterface, 1: ?CarbonInterface}
+     */
+    public function resolvePeriodFromPurchaseDate(?CarbonInterface $purchaseDate, int $durationMonths): array
+    {
+        if (! $purchaseDate) {
+            return [null, null];
+        }
+
+        $startDate = Carbon::parse($purchaseDate)->startOfDay();
+        $expiryDate = $startDate->copy()->addMonthsNoOverflow($durationMonths)->startOfDay();
+
+        return [$startDate, $expiryDate];
     }
 
     public function findActiveBySerial(string $serialNumber): ?Warranty

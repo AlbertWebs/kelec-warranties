@@ -105,8 +105,8 @@ class PosWarrantyImportService
             }
 
             $purchaseDate = ! empty($payload['purchase_date'])
-                ? now()->parse($payload['purchase_date'])
-                : now();
+                ? now()->parse($payload['purchase_date'])->startOfDay()
+                : null;
 
             $eligibility = $this->eligibilityService->evaluate(
                 $product,
@@ -130,10 +130,10 @@ class PosWarrantyImportService
                 'product_model' => $payload['product_model'] ?? $product?->model,
                 'serial_number' => $serial,
                 'branch_name' => $branch,
-                'purchase_date' => $purchaseDate->toDateString(),
+                'purchase_date' => $purchaseDate?->toDateString(),
                 'registration_date' => now(),
-                'warranty_start_date' => $status === WarrantyStatus::Active ? ($eligibility['start_date'] ?? $purchaseDate) : null,
-                'warranty_expiry_date' => $status === WarrantyStatus::Active ? ($eligibility['expiry_date'] ?? null) : null,
+                'warranty_start_date' => $status === WarrantyStatus::Active ? $eligibility['start_date'] : null,
+                'warranty_expiry_date' => $status === WarrantyStatus::Active ? $eligibility['expiry_date'] : null,
                 'warranty_duration_months' => $eligibility['duration_months'] ?? 12,
                 'status' => WarrantyStatus::Submitted,
                 'eligibility_result' => $eligibility['result'] ?? 'pos_import',

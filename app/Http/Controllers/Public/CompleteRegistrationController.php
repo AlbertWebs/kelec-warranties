@@ -9,10 +9,10 @@ use App\Models\PublicAccessToken;
 use App\Services\AuditLogger;
 use App\Services\NotificationDispatcher;
 use App\Services\PhoneNumberService;
+use App\Services\WarrantyEligibilityService;
 use App\Services\WarrantyStatusService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class CompleteRegistrationController extends Controller
@@ -72,18 +72,24 @@ class CompleteRegistrationController extends Controller
             'marketing_consent_at' => $request->boolean('marketing_consent') ? now() : $customer->marketing_consent_at,
         ]);
 
-        $start = $warranty->purchase_date ?? now();
         $duration = $warranty->warranty_duration_months ?? 12;
+        [$start, $expiry] = app(WarrantyEligibilityService::class)
+            ->resolvePeriodFromPurchaseDate($warranty->purchase_date, $duration);
 
-        $warranty->update([
+        $updates = [
             'marketing_consent' => $request->boolean('marketing_consent'),
             'registration_source' => RegistrationSource::CustomerCompletion,
             'requires_manual_verification' => false,
             'customer_notes' => null,
-            'warranty_start_date' => $start,
-            'warranty_expiry_date' => Carbon::parse($start)->addMonthsNoOverflow($duration),
             'approved_at' => now(),
-        ]);
+        ];
+
+        if ($start && $expiry) {
+            $updates['warranty_start_date'] = $start;
+            $updates['warranty_expiry_date'] = $expiry;
+        }
+
+        $warranty->update($updates);
 
         if ($warranty->status !== WarrantyStatus::Active) {
             $statusService->transition($warranty, WarrantyStatus::Active, null, 'Customer completed POS registration details');

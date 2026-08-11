@@ -97,7 +97,7 @@ MD;
         return <<<'MD'
 ## 1. Coverage
 
-K-Elec warranties cover manufacturing defects for the configured duration from the warranty start date, subject to product-specific terms and valid registration.
+K-Elec warranties cover manufacturing defects for the configured duration from the **purchase date**, not the registration date, subject to product-specific terms and valid registration.
 
 ## 2. Registration
 
