@@ -101,6 +101,45 @@ class NotificationSmsNecessityTest extends TestCase
         $this->assertSame(1, NotificationLog::query()->where('channel', NotificationChannel::Email)->count());
     }
 
+    public function test_activated_sms_excludes_lookup_link(): void
+    {
+        $warranty = $this->makeWarranty();
+
+        app(NotificationDispatcher::class)->sendNow($warranty, 'warranty_activated');
+
+        $log = NotificationLog::query()
+            ->where('channel', NotificationChannel::Sms)
+            ->where('notification_type', 'warranty_activated')
+            ->firstOrFail();
+
+        $this->assertStringNotContainsString('Lookup:', (string) $log->message);
+        $this->assertStringNotContainsString('warranty-lookup', (string) $log->message);
+        $this->assertStringNotContainsString('registered mobile', (string) $log->message);
+        $this->assertStringContainsString('Expiry', (string) $log->message);
+        $this->assertMatchesRegularExpression(
+            '/^K-Elec: Warranty .+ for .+ is .+\. Expiry .+\.$/',
+            trim((string) $log->message)
+        );
+    }
+
+    public function test_activated_email_uses_support_phone_from_settings(): void
+    {
+        app(SettingsService::class)->set('support_phone', '0716052243', 'general', 'string');
+        app(SettingsService::class)->set('support_email', 'support@k-elec.co.ke', 'general', 'string');
+
+        $warranty = $this->makeWarranty();
+        app(NotificationDispatcher::class)->sendNow($warranty, 'warranty_activated');
+
+        $log = NotificationLog::query()
+            ->where('channel', NotificationChannel::Email)
+            ->where('notification_type', 'warranty_activated')
+            ->firstOrFail();
+
+        $this->assertStringContainsString('0716 052 243', (string) $log->message);
+        $this->assertStringContainsString('support@k-elec.co.ke', (string) $log->message);
+        $this->assertStringNotContainsString('+254700000000', (string) $log->message);
+    }
+
     protected function makeWarranty(): Warranty
     {
         $customer = Customer::factory()->create([

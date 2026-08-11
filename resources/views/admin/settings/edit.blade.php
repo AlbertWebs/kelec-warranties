@@ -96,11 +96,13 @@
                     </div>
                     <div class="auth-field">
                         <label class="auth-label" for="support_phone">Support phone</label>
-                        <input id="support_phone" name="support_phone" value="{{ $s('support_phone') }}" class="auth-input" placeholder="e.g. 0700 000 000">
+                        <input id="support_phone" name="support_phone" value="{{ $s('support_phone') }}" class="auth-input" placeholder="e.g. 0716 052 243">
+                        <p class="mt-1 text-xs text-slate-500">Used in warranty emails, certificates, and the public site footer.</p>
                     </div>
                     <div class="auth-field">
                         <label class="auth-label" for="support_email">Support email</label>
-                        <input id="support_email" name="support_email" type="email" value="{{ $s('support_email') }}" class="auth-input" placeholder="support@example.com">
+                        <input id="support_email" name="support_email" type="email" value="{{ $s('support_email') }}" class="auth-input" placeholder="support@k-elec.co.ke">
+                        <p class="mt-1 text-xs text-slate-500">Shown with the support line in customer notification emails.</p>
                     </div>
                     <div class="auth-field sm:col-span-2">
                         <label class="auth-label" for="application_url">Application URL</label>

@@ -274,7 +274,7 @@ class DatabaseSeeder extends Seeder
                     'name' => $template['name'],
                     'channel' => NotificationChannel::Both,
                     'subject' => $template['subject'],
-                    'email_body' => "Hello {{customer_name}},\n\nWarranty {{warranty_reference}} for {{product_name}} ({{serial_number}}) is {{warranty_status}}.\nStart: {{warranty_start_date}}\nExpiry: {{warranty_expiry_date}}\nLookup: {{lookup_link}}\n\nSupport: {{support_phone}}",
+                    'email_body' => "Hello {{customer_name}},\n\nWarranty {{warranty_reference}} for {{product_name}} ({{serial_number}}) is {{warranty_status}}.\nStart: {{warranty_start_date}}\nExpiry: {{warranty_expiry_date}}\nLookup: {{lookup_link}}\n\nSupport: {{support_phone}} / {{support_email}}",
                     'sms_body' => 'K-Elec: Warranty {{warranty_reference}} for {{product_name}} is {{warranty_status}}. Expiry {{warranty_expiry_date}}.',
                     'is_active' => true,
                 ]
@@ -283,8 +283,8 @@ class DatabaseSeeder extends Seeder
 
         $settings = [
             ['company_name', 'K-Elec', 'general', 'string'],
-            ['support_phone', '+254700000000', 'general', 'string'],
-            ['support_email', 'support@kelec.test', 'general', 'string'],
+            ['support_phone', '0716052243', 'general', 'string'],
+            ['support_email', 'support@k-elec.co.ke', 'general', 'string'],
             ['application_url', url('/'), 'general', 'string'],
             ['default_timezone', 'Africa/Nairobi', 'general', 'string'],
             ['default_date_format', 'd M Y', 'general', 'string'],

@@ -17,7 +17,7 @@
 
     <div class="mt-10 flex flex-wrap items-center justify-center gap-3">
         <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="btn-brand">Visit main website</a>
-        <a href="tel:+254716052243" class="rounded-lg border border-gray-300 bg-white px-4 py-2 font-semibold text-brand-ink hover:border-brand hover:text-brand">Call 0716 052 243</a>
+        <a href="{{ support_phone_tel() }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 font-semibold text-brand-ink hover:border-brand hover:text-brand">Call {{ support_phone() }}</a>
     </div>
 
     <p class="mt-8 text-sm text-gray-500">Current brand shops: Sarin · CBD · Westlands</p>

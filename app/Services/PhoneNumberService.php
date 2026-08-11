@@ -34,4 +34,30 @@ class PhoneNumberService
 
         return $a !== null && $b !== null && $a === $b;
     }
+
+    public function formatDisplay(?string $number): string
+    {
+        $normalized = $this->normalize($number);
+        if ($normalized === null) {
+            return trim((string) $number);
+        }
+
+        if (str_starts_with($normalized, '254') && strlen($normalized) === 12) {
+            $local = '0'.substr($normalized, 3);
+
+            return substr($local, 0, 4).' '.substr($local, 4, 3).' '.substr($local, 7);
+        }
+
+        return $normalized;
+    }
+
+    public function toTelHref(?string $number): ?string
+    {
+        $normalized = $this->normalize($number);
+        if ($normalized === null || $normalized === '') {
+            return null;
+        }
+
+        return 'tel:+'.$normalized;
+    }
 }

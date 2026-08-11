@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\NotificationChannel;
 use App\Enums\WarrantyStatus;
 use App\Models\Warranty;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -44,6 +45,16 @@ class WarrantyQueryService
     {
         $query = Warranty::query()
             ->with(['customer', 'product', 'purchaseSource', 'dealer'])
+            ->withCount([
+                'notificationLogs as email_notifications_count' => fn ($q) => $q
+                    ->where('status', 'sent')
+                    ->where('channel', NotificationChannel::Email),
+                'notificationLogs as sms_notifications_count' => fn ($q) => $q
+                    ->where('status', 'sent')
+                    ->where('channel', NotificationChannel::Sms),
+                'notificationLogs as notifications_sent_count' => fn ($q) => $q
+                    ->where('status', 'sent'),
+            ])
             ->latest();
 
         if (! empty($filters['status'])) {

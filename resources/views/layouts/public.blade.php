@@ -220,7 +220,7 @@
                 <ul class="mt-3 space-y-3 text-sm text-white/80">
                     <li>
                         <div class="text-white/50">Phone</div>
-                        <a href="tel:+254716052243" class="footer-link text-base font-medium text-white">0716 052 243</a>
+                        <a href="{{ support_phone_tel() }}" class="footer-link text-base font-medium text-white">{{ support_phone() }}</a>
                     </li>
                     <li>
                         <div class="text-white/50">Brand shops</div>

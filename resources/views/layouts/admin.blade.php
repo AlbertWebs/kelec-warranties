@@ -213,14 +213,23 @@
 
         <main class="flex-1 overflow-y-auto overscroll-contain p-4 md:p-6">
             @if (session('success'))
-                <div class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-green-800">{{ session('success') }}</div>
+                <div class="mb-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900 shadow-sm">
+                    <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    </span>
+                    <p>{{ session('success') }}</p>
+                </div>
             @endif
             @if (session('error'))
-                <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-800">{{ session('error') }}</div>
+                <div class="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm">
+                    <span class="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-700">!</span>
+                    <p>{{ session('error') }}</p>
+                </div>
             @endif
             @if ($errors->any())
-                <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-800">
-                    <ul class="list-disc pl-5">
+                <div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-sm">
+                    <p class="font-semibold">Please fix the following:</p>
+                    <ul class="mt-1 list-disc pl-5">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach

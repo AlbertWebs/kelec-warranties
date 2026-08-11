@@ -177,7 +177,7 @@
                 </table>
 
                 <div class="support">
-                    Support: 0716 052 243 · Keep this certificate and reference for service or claims.
+                    Support: {{ support_phone() }} · Keep this certificate and reference for service or claims.
                 </div>
 
                 <div class="foot">

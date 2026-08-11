@@ -121,7 +121,7 @@
         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 class="text-sm font-semibold text-brand-ink">Need help?</h2>
             <p class="mt-2 text-sm text-gray-600">Contact K-Elec support with your warranty reference.</p>
-            <a href="tel:+254716052243" class="mt-3 inline-block text-sm font-semibold text-brand hover:underline">0716 052 243</a>
+            <a href="{{ support_phone_tel() }}" class="mt-3 inline-block text-sm font-semibold text-brand hover:underline">{{ support_phone() }}</a>
         </div>
         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 class="text-sm font-semibold text-brand-ink">Register another?</h2>

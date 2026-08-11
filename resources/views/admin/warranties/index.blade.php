@@ -204,6 +204,16 @@
                             $expiry && $expiry->lte(now()->addDays(30)) => 'text-amber-700',
                             default => 'text-slate-700',
                         };
+                        $timesNotified = $warranty->timesNotified();
+                        $notifyTitle = $timesNotified > 0
+                            ? sprintf(
+                                'Notified %d %s (email %d · SMS %d). Send again?',
+                                $timesNotified,
+                                Str::plural('time', $timesNotified),
+                                (int) $warranty->email_notifications_count,
+                                (int) $warranty->sms_notifications_count
+                            )
+                            : 'Send email and SMS notification';
                     @endphp
                     <tr class="group transition hover:bg-brand-soft/80">
                         <td class="px-4 py-3.5 align-top">
@@ -211,6 +221,14 @@
                                 {{ $warranty->reference }}
                             </a>
                             <p class="mt-0.5 text-xs text-slate-400">{{ optional($warranty->registration_date ?? $warranty->created_at)->format('d M Y') }}</p>
+                            @if ($timesNotified > 0)
+                                <p class="mt-1">
+                                    <span class="inline-flex items-center rounded-md bg-sky-50 px-1.5 py-0.5 text-[11px] font-semibold text-sky-700 ring-1 ring-inset ring-sky-600/20"
+                                          title="{{ $notifyTitle }}">
+                                        Notified {{ $timesNotified }}×
+                                    </span>
+                                </p>
+                            @endif
                         </td>
                         <td class="px-4 py-3.5 align-top">
                             <p class="font-medium text-brand-ink">{{ $warranty->customer?->full_name ?? '—' }}</p>
@@ -238,10 +256,10 @@
                                         <button
                                             type="submit"
                                             class="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-slate-500 transition hover:bg-white hover:text-brand"
-                                            title="Send email and SMS notification"
-                                            onclick="return confirm('Send notification to {{ addslashes($warranty->customer?->full_name ?? 'customer') }}?');"
+                                            title="{{ $notifyTitle }}"
+                                            onclick="return confirm(@js($timesNotified > 0 ? 'Customer already notified '.$timesNotified.' '.Str::plural('time', $timesNotified).'. Send again?' : 'Send notification to '.($warranty->customer?->full_name ?? 'customer').'?'));"
                                         >
-                                            Notify
+                                            {{ $timesNotified > 0 ? 'Notify again' : 'Notify' }}
                                         </button>
                                     </form>
                                 @endcan
@@ -277,6 +295,7 @@
     @forelse ($warranties as $warranty)
         @php
             $expiry = $warranty->warranty_expiry_date;
+            $timesNotified = $warranty->timesNotified();
         @endphp
         <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-brand/30 hover:shadow">
             <a href="{{ route('admin.warranties.show', $warranty) }}" class="block">
@@ -284,6 +303,13 @@
                     <div class="min-w-0">
                         <p class="font-mono text-sm font-semibold text-brand">{{ $warranty->reference }}</p>
                         <p class="mt-1 truncate font-medium text-brand-ink">{{ $warranty->customer?->full_name ?? '—' }}</p>
+                        @if ($timesNotified > 0)
+                            <p class="mt-1">
+                                <span class="inline-flex items-center rounded-md bg-sky-50 px-1.5 py-0.5 text-[11px] font-semibold text-sky-700 ring-1 ring-inset ring-sky-600/20">
+                                    Notified {{ $timesNotified }}×
+                                </span>
+                            </p>
+                        @endif
                     </div>
                     <x-admin.status-badge :status="$warranty->status" />
                 </div>
@@ -313,9 +339,9 @@
                         <button
                             type="submit"
                             class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-brand-ink transition hover:bg-slate-50"
-                            onclick="return confirm('Send notification to {{ addslashes($warranty->customer?->full_name ?? 'customer') }}?');"
+                            onclick="return confirm(@js($timesNotified > 0 ? 'Customer already notified '.$timesNotified.' '.Str::plural('time', $timesNotified).'. Send again?' : 'Send notification to '.($warranty->customer?->full_name ?? 'customer').'?'));"
                         >
-                            Notify
+                            {{ $timesNotified > 0 ? 'Notify again' : 'Notify' }}
                         </button>
                     </form>
                 @endcan

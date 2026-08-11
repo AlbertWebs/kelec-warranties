@@ -137,6 +137,21 @@ class Warranty extends Model
         return $this->hasMany(NotificationLog::class)->latest();
     }
 
+    /**
+     * Approximate how many times the customer was notified (email/SMS pair counts as one).
+     */
+    public function timesNotified(): int
+    {
+        $email = (int) ($this->email_notifications_count ?? 0);
+        $sms = (int) ($this->sms_notifications_count ?? 0);
+
+        if ($email || $sms) {
+            return max($email, $sms);
+        }
+
+        return (int) ($this->notifications_sent_count ?? 0);
+    }
+
     public function claims(): HasMany
     {
         return $this->hasMany(WarrantyClaim::class)->latest();

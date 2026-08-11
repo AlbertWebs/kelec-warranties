@@ -50,6 +50,12 @@ class NotificationDispatcher
     {
         $template = NotificationTemplate::query()->where('key', $type)->where('is_active', true)->first();
         $customer = $warranty->customer;
+        $supportPhone = trim((string) $this->settingsService->get('support_phone', ''));
+        $supportEmail = trim((string) $this->settingsService->get('support_email', ''));
+        $phoneDisplay = $supportPhone !== ''
+            ? app(PhoneNumberService::class)->formatDisplay($supportPhone)
+            : '';
+
         $replacements = [
             '{{customer_name}}' => $customer->full_name,
             '{{product_name}}' => $warranty->displayProductName(),
@@ -59,8 +65,8 @@ class NotificationDispatcher
             '{{warranty_start_date}}' => optional($warranty->warranty_start_date)->format('d M Y') ?? 'Pending',
             '{{warranty_expiry_date}}' => optional($warranty->warranty_expiry_date)->format('d M Y') ?? 'Pending',
             '{{warranty_status}}' => $warranty->status instanceof WarrantyStatus ? $warranty->status->label() : (string) $warranty->status,
-            '{{support_phone}}' => $this->settingsService->get('support_phone', ''),
-            '{{support_email}}' => $this->settingsService->get('support_email', ''),
+            '{{support_phone}}' => $phoneDisplay,
+            '{{support_email}}' => $supportEmail,
             '{{lookup_link}}' => url('/warranty-lookup?reference='.$warranty->reference),
         ];
 
@@ -70,7 +76,8 @@ class NotificationDispatcher
         $channel = $template?->channel ?? NotificationChannel::Both;
 
         $emailBody = $this->ensureLookupDetails($emailBody, $replacements['{{lookup_link}}'], false);
-        $smsBody = $this->ensureLookupDetails($smsBody, $replacements['{{lookup_link}}'], true);
+        $emailBody = $this->ensureSupportContact($emailBody, $phoneDisplay, $supportEmail);
+        $smsBody = $this->sanitizeSmsBody($smsBody);
 
         if (in_array($channel, [NotificationChannel::Email, NotificationChannel::Both], true) && $customer->email) {
             $this->sendEmail($warranty, $customer, $type, $customer->email, $subject, $emailBody);
@@ -232,24 +239,47 @@ class NotificationDispatcher
     protected function defaultSmsBody(string $type): string
     {
         return match ($type) {
-            'warranty_pending_verification' => 'K-Elec: Warranty {{warranty_reference}} received and pending verification. Lookup: {{lookup_link}} using your registered mobile.',
-            'warranty_rejected' => 'K-Elec: Warranty {{warranty_reference}} was not approved. Lookup: {{lookup_link}} or contact support.',
+            'warranty_pending_verification' => 'K-Elec: Warranty {{warranty_reference}} received and pending verification.',
+            'warranty_rejected' => 'K-Elec: Warranty {{warranty_reference}} was not approved. Please contact support.',
             'pos_warranty_registered' => 'K-Elec: Brand Shop warranty {{warranty_reference}} is active. Expiry {{warranty_expiry_date}}.',
             'customer_details_completion' => 'K-Elec: Complete your warranty {{warranty_reference}} details using the secure link provided.',
-            default => 'K-Elec: Warranty {{warranty_reference}} for {{product_name}} is {{warranty_status}}. Expiry {{warranty_expiry_date}}. Lookup {{lookup_link}}',
+            default => 'K-Elec: Warranty {{warranty_reference}} for {{product_name}} is {{warranty_status}}. Expiry {{warranty_expiry_date}}.',
         };
+    }
+
+    protected function ensureSupportContact(string $body, string $phone, string $email): string
+    {
+        $line = trim(implode(' / ', array_filter([$phone, $email], fn (string $value) => $value !== '')));
+        if ($line === '') {
+            return $body;
+        }
+
+        if (preg_match('/^Support:\s*.+$/mi', $body)) {
+            return preg_replace('/^Support:\s*.+$/mi', 'Support: '.$line, $body) ?? $body;
+        }
+
+        return rtrim($body)."\n\nSupport: {$line}";
     }
 
     protected function ensureLookupDetails(string $message, string $lookupLink, bool $sms): string
     {
+        // Keep SMS short — do not append lookup URLs to text messages.
+        if ($sms) {
+            return $message;
+        }
+
         if (str_contains($message, $lookupLink) || str_contains(strtolower($message), 'lookup')) {
             return $message;
         }
 
-        if ($sms) {
-            return rtrim($message).' Lookup: '.$lookupLink.' (use your registered mobile).';
-        }
-
         return rtrim($message)."\nLookup: {$lookupLink} (use your warranty reference and registered mobile number).";
+    }
+
+    protected function sanitizeSmsBody(string $message): string
+    {
+        $message = preg_replace('/\s*Lookup:\s*\S+(?:\s*\([^)]*\))?/i', '', $message) ?? $message;
+        $message = preg_replace('/\s*Lookup\s+https?:\/\/\S+/i', '', $message) ?? $message;
+
+        return trim(preg_replace('/\s{2,}/', ' ', $message) ?? $message);
     }
 }
