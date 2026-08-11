@@ -43,10 +43,12 @@ class WarrantyRegistrationService
         $existing = $this->eligibilityService->findActiveBySerial($serialNumber);
 
         if ($existing) {
+            $reference = $existing->reference ?: 'on file';
+
             return [
                 'status' => 'existing_active',
                 'warranty' => $existing,
-                'message' => 'This product already has an active warranty. Enter the registered mobile number to view the warranty details.',
+                'message' => "This serial number already has a warranty ({$reference}). Use Warranty Lookup with the registered mobile number to view it.",
             ];
         }
 

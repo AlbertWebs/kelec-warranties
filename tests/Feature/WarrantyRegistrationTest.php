@@ -269,7 +269,7 @@ class WarrantyRegistrationTest extends TestCase
 
         $this->post(route('register-warranty.serial-check'), [
             'serial_number' => 'EXISTINGACTIVE',
-        ])->assertRedirect(route('warranty.lookup'));
+        ])->assertRedirect(route('warranty.lookup', ['serial' => 'EXISTINGACTIVE']));
     }
 
     public function test_registration_uses_local_serial_cache_before_odoo(): void

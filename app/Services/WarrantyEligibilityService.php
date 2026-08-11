@@ -110,10 +110,29 @@ class WarrantyEligibilityService
 
     public function findActiveBySerial(string $serialNumber): ?Warranty
     {
+        $candidates = array_values(array_unique(array_filter([
+            trim($serialNumber),
+            strtoupper(trim($serialNumber)),
+            strtolower(trim($serialNumber)),
+        ], fn (string $value) => $value !== '')));
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        // Block re-registration for any open warranty on this unit serial (not only Active).
         return Warranty::query()
-            ->where('serial_number', $serialNumber)
-            ->where('status', WarrantyStatus::Active)
+            ->whereIn('serial_number', $candidates)
+            ->whereIn('status', [
+                WarrantyStatus::Draft,
+                WarrantyStatus::Submitted,
+                WarrantyStatus::PendingVerification,
+                WarrantyStatus::UnderReview,
+                WarrantyStatus::Active,
+                WarrantyStatus::Suspended,
+            ])
             ->with(['customer', 'product', 'purchaseSource'])
+            ->latest('id')
             ->first();
     }
 

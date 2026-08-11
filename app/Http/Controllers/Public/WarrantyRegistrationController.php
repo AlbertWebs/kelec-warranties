@@ -51,12 +51,13 @@ class WarrantyRegistrationController extends Controller
                     'success' => false,
                     'status' => 'existing_active',
                     'message' => $result['message'],
+                    'warranty_reference' => $result['warranty']->reference ?? null,
                     'redirect_url' => route('warranty.lookup', ['serial' => $serial]),
                 ], 409);
             }
 
             return redirect()
-                ->route('warranty.lookup')
+                ->route('warranty.lookup', ['serial' => $serial])
                 ->with('warning', $result['message'])
                 ->with('lookup_serial', $serial);
         }

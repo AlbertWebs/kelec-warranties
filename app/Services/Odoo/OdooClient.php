@@ -145,20 +145,13 @@ class OdooClient
             if (! $this->saleHasDetails($sale)) {
                 $sale = $this->findPosSaleBySerial($uid, $serialNumber);
             }
-            if (! $this->saleHasDetails($sale) && $productId > 0) {
-                $sale = $this->findLatestPosSaleForProduct($uid, $productId);
-            }
 
-            // Stock moves often have dates but incomplete partner details — enrich from POS when needed.
+            // Never fall back to "latest POS sale for this product model" — that belongs to a
+            // different unit and often an already-registered warranty.
+
+            // Enrich customer contact only from POS rows that match this exact serial.
             if ($this->customerNeedsContactEnrichment(is_array($sale) ? ($sale['customer'] ?? null) : null)) {
                 $posSale = $this->findPosSaleBySerial($uid, $serialNumber);
-                if ((! is_array($posSale) || $this->customerNeedsContactEnrichment($posSale['customer'] ?? null)) && $productId > 0) {
-                    $latestPos = $this->findLatestPosSaleForProduct($uid, $productId);
-                    if (is_array($latestPos)) {
-                        $posSale = $this->mergeSaleDetails($posSale, $latestPos);
-                    }
-                }
-
                 if (is_array($posSale)) {
                     $sale = $this->mergeSaleDetails($sale, $posSale);
                 }

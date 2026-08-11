@@ -87,6 +87,19 @@ class SerialValidationFallbackTest extends TestCase
         $this->assertSame('existing_active', $byRegisteredSerial['status']);
     }
 
+    public function test_pending_warranty_also_blocks_serial_re_registration(): void
+    {
+        Warranty::factory()->create([
+            'serial_number' => 'PENDING-UNIT-9',
+            'status' => WarrantyStatus::PendingVerification,
+        ]);
+
+        $result = app(WarrantyRegistrationService::class)->checkSerial('pending-unit-9');
+
+        $this->assertSame('existing_active', $result['status']);
+        $this->assertStringContainsString('already has a warranty', $result['message']);
+    }
+
     public function test_serial_check_does_not_accept_odoo_catalog_product_as_serial(): void
     {
         $mock = Mockery::mock(OdooProductService::class);
