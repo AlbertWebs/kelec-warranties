@@ -267,7 +267,8 @@ class WarrantyRegistrationService
 
             $this->notificationDispatcher->sendWarrantyNotification(
                 $warranty->fresh(['customer', 'product']),
-                $requiresManual ? 'warranty_pending_verification' : 'warranty_activated'
+                $requiresManual ? 'warranty_pending_verification' : 'warranty_activated',
+                queue: false,
             );
 
             return $warranty->fresh(['customer', 'product', 'purchaseSource', 'dealer']);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Public;
 
+use App\Services\PhoneNumberService;
 use Illuminate\Foundation\Http\FormRequest;
 
 class WarrantyRegistrationRequest extends FormRequest
@@ -16,7 +17,7 @@ class WarrantyRegistrationRequest extends FormRequest
         return [
             'serial_number' => ['required', 'string', 'min:4', 'max:100'],
             'full_name' => ['required', 'string', 'max:150'],
-            'mobile_number' => ['required', 'string', 'max:20'],
+            'mobile_number' => ['required', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:150'],
             'county' => ['nullable', 'string', 'max:100'],
             'town' => ['nullable', 'string', 'max:100'],
@@ -40,6 +41,22 @@ class WarrantyRegistrationRequest extends FormRequest
         $this->merge([
             'marketing_consent' => $this->boolean('marketing_consent'),
         ]);
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if ($validator->errors()->has('mobile_number')) {
+                return;
+            }
+
+            if (! app(PhoneNumberService::class)->isValidKenyanMobile($this->input('mobile_number'))) {
+                $validator->errors()->add(
+                    'mobile_number',
+                    'Enter a valid Kenyan mobile number (e.g. 07XXXXXXXX or +254 7XX XXX XXX).'
+                );
+            }
+        });
     }
 
     public function messages(): array

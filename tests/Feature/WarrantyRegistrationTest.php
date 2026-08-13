@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\NotificationChannel;
 use App\Enums\WarrantyStatus;
+use App\Models\NotificationLog;
 use App\Models\Product;
 use App\Models\PurchaseSource;
 use App\Models\User;
@@ -11,6 +13,10 @@ use App\Services\SettingsService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
+use App\Jobs\SendWarrantyConfirmation;
+use App\Jobs\SyncWarrantyToOdoo;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -306,5 +312,76 @@ class WarrantyRegistrationTest extends TestCase
         $this->assertEquals(WarrantyStatus::Active, $warranty->status);
         $this->assertTrue($warranty->odoo_validated);
         $this->assertStringContainsString('Product found', (string) $warranty->odoo_validation_message);
+    }
+
+    public function test_registration_sends_sms_immediately_without_queue(): void
+    {
+        Queue::fake();
+
+        Http::fake([
+            'quicksms.advantasms.com/*' => Http::response([
+                'responses' => [[
+                    'respose-code' => 200,
+                    'response-description' => 'Success',
+                    'mobile' => 254723560651,
+                    'messageid' => 9001,
+                    'networkid' => '1',
+                ]],
+            ], 200),
+        ]);
+
+        $settings = app(SettingsService::class);
+        $settings->set('sms_enabled', true, 'sms', 'boolean');
+        $settings->set('sms_api_key', 'test-key', 'sms', 'string', true);
+        $settings->set('sms_partner_id', '123', 'sms', 'string');
+        $settings->set('sms_sender_id', 'KELEC', 'sms', 'string');
+
+        $source = PurchaseSource::where('code', 'brand_shop')->firstOrFail();
+        $product = Product::firstOrFail();
+
+        $this->post(route('register-warranty.store'), [
+            'serial_number' => 'KEVALID123',
+            'full_name' => 'Jane Customer',
+            'mobile_number' => '+254 723 560651',
+            'email' => 'jane@example.com',
+            'purchase_source_id' => $source->id,
+            'product_id' => $product->id,
+            'purchase_date' => now()->subDays(3)->toDateString(),
+            'privacy_accepted' => '1',
+        ])->assertRedirect();
+
+        Queue::assertNotPushed(SendWarrantyConfirmation::class);
+        Queue::assertPushed(SyncWarrantyToOdoo::class);
+
+        $warranty = Warranty::latest()->firstOrFail();
+        $this->assertSame('254723560651', $warranty->customer->mobile_normalized);
+
+        $this->assertSame(1, NotificationLog::query()
+            ->where('warranty_id', $warranty->id)
+            ->where('channel', NotificationChannel::Sms)
+            ->where('notification_type', 'warranty_activated')
+            ->where('status', 'sent')
+            ->count());
+    }
+
+    public function test_registration_rejects_invalid_mobile_number(): void
+    {
+        $source = PurchaseSource::where('code', 'brand_shop')->firstOrFail();
+        $product = Product::firstOrFail();
+
+        $this->from(route('register-warranty.create'))
+            ->post(route('register-warranty.store'), [
+                'serial_number' => 'KEVALID123',
+                'full_name' => 'Jane Customer',
+                'mobile_number' => '=254723',
+                'purchase_source_id' => $source->id,
+                'product_id' => $product->id,
+                'purchase_date' => now()->subDays(3)->toDateString(),
+                'privacy_accepted' => '1',
+            ])
+            ->assertRedirect(route('register-warranty.create'))
+            ->assertSessionHasErrors('mobile_number');
+
+        $this->assertSame(0, Warranty::count());
     }
 }

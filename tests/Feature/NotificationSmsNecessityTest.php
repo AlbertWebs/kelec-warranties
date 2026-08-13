@@ -39,17 +39,17 @@ class NotificationSmsNecessityTest extends TestCase
         $settings->set('sms_sender_id', 'KELEC', 'sms', 'string');
     }
 
-    public function test_pending_verification_does_not_send_sms(): void
+    public function test_pending_verification_sends_sms(): void
     {
         $warranty = $this->makeWarranty();
 
         app(NotificationDispatcher::class)->sendNow($warranty, 'warranty_pending_verification');
 
-        $this->assertSame(0, NotificationLog::query()->where('channel', NotificationChannel::Sms)->count());
-        $this->assertDatabaseMissing('sms_logs', [
-            'mobile' => $warranty->customer->mobile_normalized,
-            'context' => 'warranty_pending_verification',
-        ]);
+        $this->assertSame(1, NotificationLog::query()
+            ->where('channel', NotificationChannel::Sms)
+            ->where('notification_type', 'warranty_pending_verification')
+            ->where('status', 'sent')
+            ->count());
     }
 
     public function test_activated_sends_sms_once_and_skips_duplicate(): void

@@ -20,10 +20,10 @@ class NotificationDispatcher
 {
     /**
      * SMS is billable — only these customer-facing events warrant a text.
-     * Pending portal confirmations and marketing prompts use email (or on-screen) instead.
      */
     public const SMS_NECESSARY_TYPES = [
         'warranty_activated',
+        'warranty_pending_verification',
         'warranty_rejected',
         'pos_warranty_registered',
         'customer_details_completion',

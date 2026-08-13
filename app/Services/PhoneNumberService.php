@@ -27,6 +27,15 @@ class PhoneNumberService
         return $digits;
     }
 
+    public function isValidKenyanMobile(?string $number): bool
+    {
+        $normalized = $this->normalize($number);
+
+        return $normalized !== null
+            && strlen($normalized) === 12
+            && str_starts_with($normalized, '254');
+    }
+
     public function matches(?string $first, ?string $second): bool
     {
         $a = $this->normalize($first);
