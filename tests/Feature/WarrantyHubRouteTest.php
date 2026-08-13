@@ -27,6 +27,12 @@ class WarrantyHubRouteTest extends TestCase
             ->assertRedirect(route('warranty.hub', ['tab' => 'claim']));
     }
 
+    public function test_warranty_hub_lookup_tab_redirects_to_lookup(): void
+    {
+        $this->get(route('warranty.hub', ['tab' => 'lookup']))
+            ->assertRedirect(route('warranty.lookup'));
+    }
+
     public function test_warranty_hub_default_redirects_to_register(): void
     {
         $this->get(route('warranty.hub'))

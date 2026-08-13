@@ -4,21 +4,8 @@
 @section('meta_description', 'Register a K-Elec appliance warranty or file a warranty claim online. No account required to start a claim.')
 
 @section('content')
-@php
-    $isClaim = ($tab ?? 'claim') === 'claim';
-@endphp
-
 <div class="mx-auto max-w-2xl">
-    <div class="mb-6 flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-        <a href="{{ route('register-warranty.create') }}"
-           class="flex-1 rounded-lg px-4 py-2.5 text-center text-sm font-semibold transition {{ ! $isClaim ? 'bg-brand text-white' : 'text-brand-ink hover:bg-brand-soft' }}">
-            Register a warranty
-        </a>
-        <a href="{{ route('warranty.hub', ['tab' => 'claim']) }}"
-           class="flex-1 rounded-lg px-4 py-2.5 text-center text-sm font-semibold transition {{ $isClaim ? 'bg-brand text-white' : 'text-brand-ink hover:bg-brand-soft' }}">
-            File a claim
-        </a>
-    </div>
+    @include('public.partials.warranty-tabs', ['activeTab' => 'claim'])
 
     @if ($submittedClaim)
         <div class="overflow-hidden rounded-2xl border border-green-200 bg-white shadow-sm">

@@ -4,6 +4,8 @@
 
 @section('content')
 <div class="mx-auto max-w-xl" x-data="warrantyLookupAjax()">
+    @include('public.partials.warranty-tabs', ['activeTab' => 'lookup'])
+
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div class="border-b border-gray-100 bg-gradient-to-br from-brand-soft via-white to-white px-6 py-8 text-center sm:px-8">
             <p class="text-xs font-semibold uppercase tracking-wider text-brand">Secure lookup</p>

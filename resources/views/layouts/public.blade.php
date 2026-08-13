@@ -30,7 +30,8 @@
     <header class="sticky top-0 z-50 shrink-0 border-b border-gray-200 bg-white/95 backdrop-blur">
         @php
             $mobileContext = match (true) {
-                request()->routeIs('warranty.lookup*') => 'Warranty Details',
+                request()->routeIs('warranty.lookup*') => 'Warranty Lookup',
+                request()->routeIs('warranty.hub') => 'Warranty Claim',
                 request()->routeIs('product.lookup') => 'Product Lookup',
                 request()->routeIs('register-warranty.*') => 'Warranty Registration',
                 request()->routeIs('warranty.certificate*') => 'Warranty Certificate',
@@ -51,8 +52,11 @@
                             My Account
                         </a>
                     @else
-                        <a href="{{ route('customer.login') }}" class="mobile-login-pill">
-                            Login
+                        <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="mobile-login-pill inline-flex items-center gap-1.5">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            Main Website
                         </a>
                     @endauth
                     <button type="button"
@@ -81,10 +85,9 @@
             </a>
 
             <nav class="items-center gap-1 text-sm font-medium text-brand-ink md:flex">
-                <a href="{{ route('register-warranty.create') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Register</a>
-                <a href="{{ route('warranty.lookup') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Warranty lookup</a>
-                <a href="{{ route('warranty.hub', ['tab' => 'claim']) }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Claim</a>
+                <a href="{{ route('register-warranty.create') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Register Warranty</a>
                 <a href="https://k-elec.co.ke/brand-shops" target="_blank" rel="noopener" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Brand Shops</a>
+                <a href="https://k-elec.co.ke/products" target="_blank" rel="noopener" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">Products</a>
                 @auth('customer')
                     <a href="{{ route('customer.warranties.index') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">My Warranties</a>
                     <a href="{{ route('customer.claims.index') }}" class="rounded-md px-3 py-2 hover:bg-brand-soft hover:text-brand">My Claims</a>
@@ -98,7 +101,12 @@
                         </button>
                     </form>
                 @else
-                    <a href="{{ route('customer.login') }}" class="btn-brand ml-1 !px-3 !py-2 text-sm">Customer Login</a>
+                    <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="btn-brand ml-1 inline-flex items-center gap-1.5 !px-3 !py-2 text-sm">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Main Website
+                    </a>
                 @endauth
                 @auth('web')
                     <a href="{{ route('admin.dashboard') }}" class="ml-1 rounded-md border border-brand-navy px-3 py-2 text-brand-navy hover:bg-brand-soft">Admin</a>
@@ -119,9 +127,8 @@
              @click.outside="mobileNavOpen = false">
             <nav class="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-3 text-sm font-medium text-brand-ink">
                 <a href="{{ route('register-warranty.create') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Register Warranty</a>
-                <a href="{{ route('warranty.lookup') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Warranty Lookup</a>
-                <a href="{{ route('warranty.hub', ['tab' => 'claim']) }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">Claim Warranty</a>
                 <a href="https://k-elec.co.ke/brand-shops" target="_blank" rel="noopener" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand">Brand Shops ↗</a>
+                <a href="https://k-elec.co.ke/products" target="_blank" rel="noopener" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand">Products ↗</a>
                 <div class="my-1 border-t border-gray-100"></div>
                 @auth('customer')
                     <a href="{{ route('customer.warranties.index') }}" class="rounded-lg px-3 py-3 hover:bg-brand-soft hover:text-brand" @click="mobileNavOpen = false">My Warranties</a>
@@ -136,7 +143,12 @@
                         </button>
                     </form>
                 @else
-                    <a href="{{ route('customer.login') }}" class="btn-brand text-center" @click="mobileNavOpen = false">Customer Login</a>
+                    <a href="https://k-elec.co.ke/" target="_blank" rel="noopener" class="btn-brand inline-flex items-center justify-center gap-2 text-center">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Main Website
+                    </a>
                 @endauth
                 @auth('web')
                     <a href="{{ route('admin.dashboard') }}" class="rounded-lg border border-brand-navy px-3 py-3 text-center text-brand-navy" @click="mobileNavOpen = false">Admin dashboard</a>

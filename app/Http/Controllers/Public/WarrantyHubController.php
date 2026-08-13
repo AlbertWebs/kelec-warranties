@@ -29,6 +29,10 @@ class WarrantyHubController extends Controller
             return redirect()->route('register-warranty.create');
         }
 
+        if ($tab === 'lookup') {
+            return redirect()->route('warranty.lookup');
+        }
+
         if ($tab !== 'claim') {
             return redirect()->route('warranty.hub', ['tab' => 'claim']);
         }

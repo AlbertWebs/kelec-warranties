@@ -57,6 +57,8 @@
 @endphp
 
 <div class="mx-auto max-w-3xl" x-data="warrantyWizard()">
+    @include('public.partials.warranty-tabs', ['activeTab' => 'register'])
+
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-slate-900">Register your K-Elec warranty</h1>
         <p class="mt-2 text-slate-600">Complete the steps below. Serial validation happens first, then your details and consent.</p>

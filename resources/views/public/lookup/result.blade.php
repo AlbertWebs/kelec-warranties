@@ -13,6 +13,8 @@
     $remaining = $warranty->remainingDays();
 @endphp
 
+@include('public.partials.warranty-tabs', ['activeTab' => 'lookup'])
+
 <div class="mx-auto max-w-3xl">
     <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div @class([
