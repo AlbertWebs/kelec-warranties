@@ -205,7 +205,9 @@ class ClaimPhotoUploadTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.claims.show', $claim))
             ->assertOk()
-            ->assertSee('admin-view.jpg');
+            ->assertSee('admin-view.jpg')
+            ->assertSee('Click to zoom')
+            ->assertSee('aria-label="Zoom in"', false);
 
         $this->actingAs($admin)
             ->get(route('admin.claims.photos.show', [$claim, $photo]))

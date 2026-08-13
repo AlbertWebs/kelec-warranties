@@ -65,13 +65,21 @@
                         <p class="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{{ $claim->customer_notes }}</p>
                     </div>
                 @endif
+            </div>
+        </section>
+
+        <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            <div class="border-b border-slate-100 px-5 py-4">
+                <h2 class="text-sm font-semibold text-brand-ink">Photos</h2>
                 @if ($claim->photos->isNotEmpty())
-                    <x-claim-photo-gallery :photos="$claim->photos" :claim="$claim" route-name="admin.claims.photos.show" />
+                    <p class="mt-1 text-xs text-slate-500">{{ $claim->photos->count() }} attached · click a photo to zoom and inspect the fault</p>
+                @endif
+            </div>
+            <div class="px-5 py-5">
+                @if ($claim->photos->isNotEmpty())
+                    <x-claim-photo-gallery :photos="$claim->photos" :claim="$claim" route-name="admin.claims.photos.show" size="lg" :show-heading="false" />
                 @else
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Photos</p>
-                        <p class="mt-1 text-sm text-slate-500">No photos were uploaded with this claim.</p>
-                    </div>
+                    <p class="rounded-lg border border-dashed border-slate-200 px-3 py-8 text-center text-sm text-slate-500">No photos were uploaded with this claim.</p>
                 @endif
             </div>
         </section>

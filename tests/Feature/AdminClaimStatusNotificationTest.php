@@ -50,7 +50,8 @@ class AdminClaimStatusNotificationTest extends TestCase
             ->assertSee($claim->reference)
             ->assertSee('Notify customer')
             ->assertSee('Linked warranty')
-            ->assertSee('Save changes');
+            ->assertSee('Save changes')
+            ->assertSee('Photos');
     }
 
     public function test_status_change_notifies_customer_by_default(): void
