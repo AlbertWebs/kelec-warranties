@@ -97,9 +97,9 @@ class WarrantyRegistrationService
             $message = 'Serial number validated successfully.';
             if ($inStock) {
                 $branch = $odooSale['branch_name'] ?? null;
-                $message = 'Product found in stock'
+                $message = 'Serial found in stock'
                     .($branch ? ' at '.$branch : '')
-                    .'. This unit was transferred internally and is not sold yet. Place of purchase is prefilled from the current branch. Add purchase date and invoice after the customer buys it.';
+                    .'. This unit has not been sold yet. You can order it from,';
             } elseif (is_array($odoo) && ! $hasSaleDetails) {
                 $message = 'Product found. Sale details were not automatically retrieved from Odoo, so please confirm purchase information.';
             }

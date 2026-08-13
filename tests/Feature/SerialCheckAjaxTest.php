@@ -76,7 +76,8 @@ class SerialCheckAjaxTest extends TestCase
             ->assertJsonPath('prefill.branch_name', 'CBD')
             ->assertJsonPath('prefill.purchase_date', null)
             ->assertJsonPath('prefill.invoice_number', null)
-            ->assertJsonPath('prefill.purchase_place_label', 'Current branch: CBD');
+            ->assertJsonPath('prefill.purchase_place_label', 'Current branch: CBD')
+            ->assertJsonPath('message', 'Serial found in stock at CBD. This unit has not been sold yet. You can order it from,');
     }
 
     public function test_ajax_serial_check_redirects_existing_active_warranty(): void
