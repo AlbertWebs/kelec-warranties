@@ -4,6 +4,7 @@ namespace App\Services\Odoo;
 
 use App\Models\OdooSyncLog;
 use App\Models\Product;
+use App\Services\ActivityLogger;
 use App\Services\SettingsService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -1479,6 +1480,24 @@ class OdooClient
             ]);
         } catch (Throwable $e) {
             Log::warning('Failed to write Odoo sync log', ['error' => $e->getMessage()]);
+        }
+
+        try {
+            app(ActivityLogger::class)->log(
+                type: 'odoo_fetch',
+                action: $action,
+                status: in_array($resultStatus, ['success', 'found'], true) ? 'success' : (in_array($resultStatus, ['failed', 'error'], true) ? 'failed' : $resultStatus),
+                query: $reference,
+                reference: $endpoint,
+                resultSummary: $error ?: ('Odoo '.$action.' '.$resultStatus),
+                meta: [
+                    'endpoint' => $endpoint,
+                    'response_status' => $status,
+                    'odoo_status' => $resultStatus,
+                ],
+            );
+        } catch (Throwable $e) {
+            Log::warning('Failed to write Odoo activity log', ['error' => $e->getMessage()]);
         }
     }
 }

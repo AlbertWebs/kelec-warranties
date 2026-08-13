@@ -313,6 +313,7 @@ class DemoDataService
             'public_access_tokens',
             'integration_failures',
             'odoo_sync_logs',
+            'activity_logs',
             'odoo_mappings',
             'audit_logs',
             'warranties',

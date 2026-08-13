@@ -50,6 +50,7 @@ class DatabaseSeeder extends Seeder
             'users.manage',
             'roles.manage',
             'audit_logs.view',
+            'activity_logs.view',
             'settings.manage',
             'claims.view',
             'claims.manage',
@@ -84,6 +85,7 @@ class DatabaseSeeder extends Seeder
             'users.manage',
             'claims.view',
             'claims.manage',
+            'activity_logs.view',
         ]);
 
         $support->syncPermissions([

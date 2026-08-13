@@ -9,7 +9,10 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class WarrantyQueryService
 {
-    public function __construct(protected PhoneNumberService $phoneNumberService) {}
+    public function __construct(
+        protected PhoneNumberService $phoneNumberService,
+        protected ActivityLogger $activityLogger,
+    ) {}
 
     public function lookup(?string $serialNumber, ?string $mobileNumber): ?Warranty
     {
@@ -17,15 +20,42 @@ class WarrantyQueryService
         $serial = strtoupper(trim((string) $serialNumber));
 
         if (! $normalizedMobile || $serial === '') {
+            $this->activityLogger->log(
+                type: 'warranty_lookup',
+                action: 'lookup',
+                status: 'not_found',
+                query: $serial !== '' ? $serial : null,
+                resultSummary: 'Missing serial or mobile number.',
+                meta: ['reason' => 'incomplete_input'],
+            );
+
             return null;
         }
 
-        return Warranty::query()
+        $warranty = Warranty::query()
             ->with(['customer', 'product', 'purchaseSource', 'dealer'])
             ->where('serial_number', $serial)
             ->whereHas('customer', fn ($q) => $q->where('mobile_normalized', $normalizedMobile))
             ->latest()
             ->first();
+
+        $this->activityLogger->log(
+            type: 'warranty_lookup',
+            action: 'lookup',
+            status: $warranty ? 'found' : 'not_found',
+            query: $serial,
+            reference: $warranty?->reference,
+            resultSummary: $warranty
+                ? 'Matched warranty '.$warranty->reference
+                : 'No warranty matched serial and mobile.',
+            meta: [
+                'mobile_last4' => substr($normalizedMobile, -4),
+                'warranty_id' => $warranty?->id,
+                'status' => $warranty?->status?->value,
+            ],
+        );
+
+        return $warranty;
     }
 
     /**

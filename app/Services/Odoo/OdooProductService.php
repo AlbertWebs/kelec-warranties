@@ -2,13 +2,17 @@
 
 namespace App\Services\Odoo;
 
+use App\Models\OdooSyncLog;
 use App\Models\Product;
+use App\Services\ActivityLogger;
 use App\Services\SettingsService;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
+use Throwable;
 
 class OdooProductService
 {
@@ -56,15 +60,36 @@ class OdooProductService
             'image_1920',
         ];
 
-        $result = $this->executeKw('product.product', 'search_read', [
-            $domain,
-            $fields,
-            $offset,
-            $limit,
-            'id asc',
-        ]);
+        try {
+            $result = $this->executeKw('product.product', 'search_read', [
+                $domain,
+                $fields,
+                $offset,
+                $limit,
+                'id asc',
+            ]);
 
-        return is_array($result) ? $result : [];
+            $rows = is_array($result) ? $result : [];
+            $this->recordOdooFetch(
+                action: 'fetch_products_batch',
+                status: 'success',
+                query: 'offset='.$offset.'&limit='.$limit,
+                summary: count($rows).' products fetched',
+                meta: ['offset' => $offset, 'limit' => $limit, 'count' => count($rows)],
+            );
+
+            return $rows;
+        } catch (Throwable $e) {
+            $this->recordOdooFetch(
+                action: 'fetch_products_batch',
+                status: 'failed',
+                query: 'offset='.$offset.'&limit='.$limit,
+                summary: $e->getMessage(),
+                meta: ['offset' => $offset, 'limit' => $limit],
+            );
+
+            throw $e;
+        }
     }
 
     /**
@@ -93,43 +118,85 @@ class OdooProductService
             return null;
         }
 
-        $exactFields = ['barcode', 'default_code', 'name'];
-        foreach ($this->queryCandidates($query) as $candidate) {
-            foreach ($exactFields as $field) {
-                $result = $this->executeKw('product.product', 'search_read', [
-                    [[$field, '=', $candidate]],
+        try {
+            $exactFields = ['barcode', 'default_code', 'name'];
+            foreach ($this->queryCandidates($query) as $candidate) {
+                foreach ($exactFields as $field) {
+                    $result = $this->executeKw('product.product', 'search_read', [
+                        [[$field, '=', $candidate]],
+                    ], [
+                        'fields' => ['id', 'product_tmpl_id', 'name', 'display_name', 'default_code', 'barcode', 'type', 'categ_id', 'description', 'description_sale', 'list_price', 'standard_price', 'currency_id', 'uom_id', 'active', 'sale_ok', 'purchase_ok', 'tracking', 'create_date', 'write_date', 'image_1920'],
+                        'limit' => 1,
+                        'order' => 'id asc',
+                    ]);
+
+                    if (is_array($result) && isset($result[0])) {
+                        $this->recordOdooFetch(
+                            action: 'search_product',
+                            status: 'success',
+                            query: $query,
+                            summary: 'Product matched on '.$field,
+                            meta: ['field' => $field, 'odoo_id' => $result[0]['id'] ?? null],
+                        );
+
+                        return $result[0];
+                    }
+                }
+            }
+
+            if ($allowFuzzyName) {
+                $nameSearch = $this->executeKw('product.product', 'search_read', [
+                    [['name', 'ilike', $query]],
                 ], [
                     'fields' => ['id', 'product_tmpl_id', 'name', 'display_name', 'default_code', 'barcode', 'type', 'categ_id', 'description', 'description_sale', 'list_price', 'standard_price', 'currency_id', 'uom_id', 'active', 'sale_ok', 'purchase_ok', 'tracking', 'create_date', 'write_date', 'image_1920'],
                     'limit' => 1,
                     'order' => 'id asc',
                 ]);
 
-                if (is_array($result) && isset($result[0])) {
-                    return $result[0];
+                if (is_array($nameSearch) && isset($nameSearch[0])) {
+                    $this->recordOdooFetch(
+                        action: 'search_product',
+                        status: 'success',
+                        query: $query,
+                        summary: 'Product matched by fuzzy name',
+                        meta: ['field' => 'name_ilike', 'odoo_id' => $nameSearch[0]['id'] ?? null],
+                    );
+
+                    return $nameSearch[0];
                 }
             }
-        }
 
-        if ($allowFuzzyName) {
-            $nameSearch = $this->executeKw('product.product', 'search_read', [
-                [['name', 'ilike', $query]],
-            ], [
-                'fields' => ['id', 'product_tmpl_id', 'name', 'display_name', 'default_code', 'barcode', 'type', 'categ_id', 'description', 'description_sale', 'list_price', 'standard_price', 'currency_id', 'uom_id', 'active', 'sale_ok', 'purchase_ok', 'tracking', 'create_date', 'write_date', 'image_1920'],
-                'limit' => 1,
-                'order' => 'id asc',
-            ]);
+            $serialLot = $this->findProductBySerialLot($query);
+            if ($serialLot) {
+                $this->recordOdooFetch(
+                    action: 'search_product',
+                    status: 'success',
+                    query: $query,
+                    summary: 'Product matched via serial lot',
+                    meta: ['field' => 'serial_lot', 'odoo_id' => $serialLot['id'] ?? null],
+                );
 
-            if (is_array($nameSearch) && isset($nameSearch[0])) {
-                return $nameSearch[0];
+                return $serialLot;
             }
-        }
 
-        $serialLot = $this->findProductBySerialLot($query);
-        if ($serialLot) {
-            return $serialLot;
-        }
+            $this->recordOdooFetch(
+                action: 'search_product',
+                status: 'not_found',
+                query: $query,
+                summary: 'No Odoo product matched query',
+            );
 
-        return null;
+            return null;
+        } catch (Throwable $e) {
+            $this->recordOdooFetch(
+                action: 'search_product',
+                status: 'failed',
+                query: $query,
+                summary: $e->getMessage(),
+            );
+
+            throw $e;
+        }
     }
 
     /**
@@ -460,5 +527,43 @@ class OdooProductService
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $meta
+     */
+    protected function recordOdooFetch(
+        string $action,
+        string $status,
+        ?string $query = null,
+        ?string $summary = null,
+        ?array $meta = null,
+    ): void {
+        try {
+            OdooSyncLog::create([
+                'endpoint' => 'product.product',
+                'action' => $action,
+                'request_reference' => $query,
+                'response_status' => $status === 'failed' ? 500 : ($status === 'not_found' ? 404 : 200),
+                'error_message' => $status === 'failed' ? $summary : null,
+                'status' => $status === 'success' ? 'success' : ($status === 'not_found' ? 'not_found' : 'failed'),
+            ]);
+        } catch (Throwable $e) {
+            Log::warning('Failed to write Odoo product fetch sync log', ['error' => $e->getMessage()]);
+        }
+
+        try {
+            app(ActivityLogger::class)->log(
+                type: 'odoo_fetch',
+                action: $action,
+                status: $status,
+                query: $query,
+                reference: 'product.product',
+                resultSummary: $summary,
+                meta: $meta,
+            );
+        } catch (Throwable $e) {
+            Log::warning('Failed to write Odoo product fetch activity log', ['error' => $e->getMessage()]);
+        }
     }
 }
