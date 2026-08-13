@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\NotificationChannel;
+use App\Enums\ClaimStatus;
 use App\Enums\WarrantyStatus;
 use App\Jobs\SendWarrantyConfirmation;
 use App\Models\Customer;
@@ -10,6 +11,7 @@ use App\Models\NotificationLog;
 use App\Models\NotificationTemplate;
 use App\Models\User;
 use App\Models\Warranty;
+use App\Models\WarrantyClaim;
 use App\Models\WarrantyNote;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -27,6 +29,7 @@ class NotificationDispatcher
         'customer_details_completion',
         'warranty_lookup',
         'admin_test',
+        'claim_status_updated',
     ];
 
     public function __construct(
@@ -116,6 +119,64 @@ class NotificationDispatcher
         $this->auditLogger->log('notification_resent', $warranty, null, ['type' => $type]);
     }
 
+    public function notifyClaimStatusChange(WarrantyClaim $claim, ClaimStatus $previousStatus): void
+    {
+        $claim->loadMissing(['customer', 'warranty']);
+        $customer = $claim->customer;
+
+        if (! $customer) {
+            return;
+        }
+
+        $status = $claim->status instanceof ClaimStatus
+            ? $claim->status
+            : ClaimStatus::from((string) $claim->status);
+
+        $supportPhone = trim((string) $this->settingsService->get('support_phone', ''));
+        $supportEmail = trim((string) $this->settingsService->get('support_email', ''));
+        $phoneDisplay = $supportPhone !== ''
+            ? app(PhoneNumberService::class)->formatDisplay($supportPhone)
+            : '';
+
+        $productName = $claim->warranty?->displayProductName() ?: 'your appliance';
+        $statusLabel = $status->label();
+        $previousLabel = $previousStatus->label();
+
+        $subject = "Claim {$claim->reference} is now {$statusLabel}";
+        $emailBody = "Hello {$customer->full_name},\n\n"
+            ."Your warranty claim {$claim->reference} for {$productName} has been updated.\n\n"
+            ."Previous status: {$previousLabel}\n"
+            ."New status: {$statusLabel}\n"
+            ."Subject: {$claim->subject}\n";
+
+        if (filled($claim->admin_notes) && in_array($status, [ClaimStatus::Resolved, ClaimStatus::Closed, ClaimStatus::InReview], true)) {
+            $emailBody .= "\nUpdate from our team:\n{$claim->admin_notes}\n";
+        }
+
+        $emailBody .= "\nSupport: ".trim(implode(' / ', array_filter([$phoneDisplay, $supportEmail])));
+
+        $smsBody = "K-Elec: Claim {$claim->reference} is now {$statusLabel}.";
+
+        $this->sendCustomMessage(
+            $customer,
+            $claim->warranty,
+            'claim_status_updated',
+            $subject,
+            $emailBody,
+            $smsBody,
+            allowSms: true,
+        );
+
+        if ($claim->warranty) {
+            $this->auditLogger->log('claim_status_notified', $claim->warranty, null, [
+                'claim_id' => $claim->id,
+                'claim_reference' => $claim->reference,
+                'from' => $previousStatus->value,
+                'to' => $status->value,
+            ]);
+        }
+    }
+
     public function isSmsNecessary(string $type): bool
     {
         return in_array($type, self::SMS_NECESSARY_TYPES, true);
@@ -136,6 +197,11 @@ class NotificationDispatcher
 
     protected function alreadySentSms(Warranty $warranty, string $type): bool
     {
+        // Claim updates can happen more than once per day for the same warranty.
+        if ($type === 'claim_status_updated') {
+            return false;
+        }
+
         return NotificationLog::query()
             ->where('warranty_id', $warranty->id)
             ->where('notification_type', $type)

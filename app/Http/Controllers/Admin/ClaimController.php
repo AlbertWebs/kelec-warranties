@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ClaimStatus;
 use App\Http\Controllers\Controller;
 use App\Models\WarrantyClaim;
+use App\Services\AuditLogger;
+use App\Services\NotificationDispatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,6 +14,11 @@ use Illuminate\View\View;
 
 class ClaimController extends Controller
 {
+    public function __construct(
+        protected NotificationDispatcher $notificationDispatcher,
+        protected AuditLogger $auditLogger,
+    ) {}
+
     public function index(Request $request): View
     {
         abort_unless($request->user()->can('claims.view'), 403);
@@ -44,16 +51,51 @@ class ClaimController extends Controller
     public function update(Request $request, WarrantyClaim $claim): RedirectResponse
     {
         abort_unless($request->user()->can('claims.manage'), 403);
+
         $validated = $request->validate([
             'status' => ['required', Rule::enum(ClaimStatus::class)],
             'admin_notes' => ['nullable', 'string', 'max:5000'],
+            'notify_customer' => ['nullable', 'boolean'],
         ]);
+
+        $previousStatus = $claim->status instanceof ClaimStatus
+            ? $claim->status
+            : ClaimStatus::from((string) $claim->status);
+
+        $nextStatus = $validated['status'] instanceof ClaimStatus
+            ? $validated['status']
+            : ClaimStatus::from((string) $validated['status']);
+
+        $previousNotes = $claim->admin_notes;
+        $statusChanged = $previousStatus !== $nextStatus;
+        $shouldNotify = $statusChanged && $request->boolean('notify_customer', true);
 
         $claim->update([
-            'status' => $validated['status'],
-            'admin_notes' => $validated['admin_notes'] ?? $claim->admin_notes,
+            'status' => $nextStatus,
+            'admin_notes' => $validated['admin_notes'] ?? null,
         ]);
 
-        return back()->with('success', 'Claim updated.');
+        $this->auditLogger->log('claim_updated', $claim->warranty, [
+            'status' => $previousStatus->value,
+            'admin_notes' => $previousNotes,
+        ], [
+            'claim_id' => $claim->id,
+            'claim_reference' => $claim->reference,
+            'status' => $nextStatus->value,
+            'notified' => $shouldNotify,
+        ]);
+
+        if ($shouldNotify) {
+            $this->notificationDispatcher->notifyClaimStatusChange($claim->fresh(['customer', 'warranty']), $previousStatus);
+        }
+
+        $message = 'Claim updated.';
+        if ($shouldNotify) {
+            $message = 'Claim updated and the customer has been notified.';
+        } elseif ($statusChanged) {
+            $message = 'Claim updated without notifying the customer.';
+        }
+
+        return back()->with('success', $message);
     }
 }

@@ -5,8 +5,11 @@
 @section('content')
 <div class="mx-auto max-w-2xl">
     <a href="{{ route('customer.claims.index') }}" class="text-sm font-medium text-brand hover:underline">← Back to claims</a>
-    <h1 class="mt-2 text-2xl font-bold text-brand-ink sm:text-3xl">{{ $claim->reference }}</h1>
-    <p class="mt-1 text-sm text-gray-600">{{ $claim->status->label() }} · submitted {{ $claim->created_at->format('d M Y H:i') }}</p>
+    <div class="mt-2 flex flex-wrap items-center gap-2.5">
+        <h1 class="text-2xl font-bold text-brand-ink sm:text-3xl">{{ $claim->reference }}</h1>
+        <x-admin.status-badge :status="$claim->status" />
+    </div>
+    <p class="mt-1 text-sm text-gray-600">Submitted {{ $claim->created_at->format('d M Y H:i') }}</p>
 
     <section class="mt-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <dl class="space-y-3 text-sm">
