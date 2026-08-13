@@ -25,6 +25,7 @@ use App\Http\Controllers\Public\CompleteRegistrationController;
 use App\Http\Controllers\Public\ContentPageController;
 use App\Http\Controllers\Public\MarketingConsentController;
 use App\Http\Controllers\Public\WarrantyCertificateController;
+use App\Http\Controllers\Public\WarrantyHubController;
 use App\Http\Controllers\Public\WarrantyLookupController;
 use App\Http\Controllers\Public\WarrantyRegistrationController;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +50,13 @@ Route::middleware('throttle:warranty-lookup')->group(function () {
     Route::get('/warranty-lookup', [WarrantyLookupController::class, 'create'])->name('warranty.lookup');
     Route::post('/warranty-lookup', [WarrantyLookupController::class, 'store'])->name('warranty.lookup.store');
     Route::post('/warranty-lookup/resend', [WarrantyLookupController::class, 'resend'])->name('warranty.lookup.resend');
+});
+
+Route::middleware('throttle:warranty-lookup')->group(function () {
+    Route::get('/warranty', [WarrantyHubController::class, 'show'])->name('warranty.hub');
+    Route::post('/warranty/claim/verify', [WarrantyHubController::class, 'verify'])->name('warranty.claim.verify');
+    Route::post('/warranty/claim', [WarrantyHubController::class, 'store'])->name('warranty.claim.store');
+    Route::post('/warranty/claim/reset', [WarrantyHubController::class, 'reset'])->name('warranty.claim.reset');
 });
 
 Route::get('/warranty/{reference}/certificate', [WarrantyCertificateController::class, 'show'])->name('warranty.certificate');

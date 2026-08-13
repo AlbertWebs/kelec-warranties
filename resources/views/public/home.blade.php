@@ -40,7 +40,7 @@
                 Register and track your appliance warranty with confidence in minutes. Enter your product details to activate a new warranty, check coverage status, and keep your proof of warranty ready for support.
             </p>
 
-            <div class="mt-7 grid gap-3 sm:grid-cols-2">
+            <div class="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <a href="{{ route('register-warranty.create') }}" class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow">
                     <div class="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand-light text-brand">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -60,6 +60,16 @@
                     <p class="font-semibold text-brand-ink">Lookup Product</p>
                     <p class="mt-1 text-sm text-slate-600">Search by serial number, barcode, SKU, or name.</p>
                     <p class="mt-3 text-sm font-semibold text-brand-navy">Find Product</p>
+                </a>
+                <a href="{{ route('warranty.hub', ['tab' => 'claim']) }}" class="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow sm:col-span-2 lg:col-span-1">
+                    <div class="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+                        </svg>
+                    </div>
+                    <p class="font-semibold text-brand-ink">Claim Warranty</p>
+                    <p class="mt-1 text-sm text-slate-600">File a service claim against an active warranty.</p>
+                    <p class="mt-3 text-sm font-semibold text-amber-700">File a Claim</p>
                 </a>
             </div>
         </div>
