@@ -303,6 +303,7 @@ class DemoDataService
     public function wipe(): array
     {
         $tables = [
+            'warranty_claim_photos',
             'warranty_claims',
             'warranty_notes',
             'warranty_documents',

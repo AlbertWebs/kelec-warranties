@@ -23,4 +23,5 @@ Route::middleware('auth:customer')->prefix('customer')->name('customer.')->group
     Route::get('/claims/create', [ClaimController::class, 'create'])->name('claims.create');
     Route::post('/claims', [ClaimController::class, 'store'])->name('claims.store');
     Route::get('/claims/{claim}', [ClaimController::class, 'show'])->name('claims.show');
+    Route::get('/claims/{claim}/photos/{photo}', [ClaimController::class, 'photo'])->name('claims.photos.show');
 });

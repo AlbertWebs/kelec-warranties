@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DealerController;
 use App\Http\Controllers\Admin\DemoDataController;
 use App\Http\Controllers\Admin\DocumentDownloadController;
+use App\Http\Controllers\Admin\LegalContentController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\OdooController;
 use App\Http\Controllers\Admin\OdooProductSyncController;
@@ -16,7 +17,6 @@ use App\Http\Controllers\Admin\ProductController;
 use App\Http\Controllers\Admin\PurchaseSourceController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\LegalContentController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\SmsController;
 use App\Http\Controllers\Admin\UserController;
@@ -98,6 +98,7 @@ Route::middleware(['auth', 'verified', 'active', 'admin'])->prefix('admin')->nam
 
     Route::get('/claims', [AdminClaimController::class, 'index'])->name('claims.index');
     Route::get('/claims/{claim}', [AdminClaimController::class, 'show'])->name('claims.show');
+    Route::get('/claims/{claim}/photos/{photo}', [AdminClaimController::class, 'photo'])->name('claims.photos.show');
     Route::put('/claims/{claim}', [AdminClaimController::class, 'update'])->name('claims.update');
 
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');

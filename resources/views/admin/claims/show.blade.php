@@ -65,6 +65,14 @@
                         <p class="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{{ $claim->customer_notes }}</p>
                     </div>
                 @endif
+                @if ($claim->photos->isNotEmpty())
+                    <x-claim-photo-gallery :photos="$claim->photos" :claim="$claim" route-name="admin.claims.photos.show" />
+                @else
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Photos</p>
+                        <p class="mt-1 text-sm text-slate-500">No photos were uploaded with this claim.</p>
+                    </div>
+                @endif
             </div>
         </section>
 

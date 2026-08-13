@@ -30,6 +30,12 @@
                         <dt class="text-slate-500">Subject</dt>
                         <dd class="font-medium text-brand-ink">{{ $submittedClaim->subject }}</dd>
                     </div>
+                    @if ($submittedClaim->photos->isNotEmpty())
+                        <div class="sm:col-span-2">
+                            <dt class="text-slate-500">Photos uploaded</dt>
+                            <dd class="font-medium text-brand-ink">{{ $submittedClaim->photos->count() }}</dd>
+                        </div>
+                    @endif
                 </dl>
                 <div class="flex flex-wrap gap-2 pt-2">
                     <a href="{{ route('warranty.hub', ['tab' => 'claim']) }}" class="btn-brand !px-4 !py-2 text-sm">File another claim</a>
@@ -49,7 +55,7 @@
                 </p>
             </div>
 
-            <form method="POST" action="{{ url('/warranty/claim') }}" class="space-y-4 px-6 py-6 sm:px-8">
+            <form method="POST" action="{{ url('/warranty/claim') }}" enctype="multipart/form-data" class="space-y-4 px-6 py-6 sm:px-8">
                 @csrf
                 <div>
                     <label for="subject" class="mb-1 block text-sm font-medium text-brand-ink">Subject</label>
@@ -71,6 +77,7 @@
                               class="w-full rounded-lg border-gray-300 focus:border-brand focus:ring-brand">{{ old('customer_notes') }}</textarea>
                     @error('customer_notes')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
                 </div>
+                <x-claim-photo-upload />
                 <button type="submit" class="btn-brand w-full py-3 sm:w-auto sm:px-8">Submit claim</button>
             </form>
             <div class="border-t border-gray-100 px-6 py-4 sm:px-8">

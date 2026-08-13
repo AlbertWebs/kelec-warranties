@@ -14,7 +14,7 @@
             <a href="{{ route('customer.warranties.index') }}" class="font-semibold underline">View your warranties</a>
         </div>
     @else
-        <form method="POST" action="{{ route('customer.claims.store') }}" class="mt-8 space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <form method="POST" action="{{ route('customer.claims.store') }}" enctype="multipart/form-data" class="mt-8 space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
             @csrf
             <div>
                 <label for="warranty_id" class="block text-sm font-medium text-brand-ink">Warranty</label>
@@ -46,6 +46,7 @@
                           class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-brand focus:ring-brand">{{ old('customer_notes') }}</textarea>
                 @error('customer_notes')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
             </div>
+            <x-claim-photo-upload />
             <button type="submit" class="btn-brand">Submit claim</button>
         </form>
     @endif

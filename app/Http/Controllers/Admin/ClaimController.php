@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ClaimStatus;
 use App\Http\Controllers\Controller;
 use App\Models\WarrantyClaim;
+use App\Models\WarrantyClaimPhoto;
 use App\Services\AuditLogger;
 use App\Services\NotificationDispatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClaimController extends Controller
 {
@@ -40,11 +43,23 @@ class ClaimController extends Controller
     {
         abort_unless($request->user()->can('claims.view'), 403);
 
-        $claim->load(['customer', 'warranty.product']);
+        $claim->load(['customer', 'warranty.product', 'photos']);
 
         return view('admin.claims.show', [
             'claim' => $claim,
             'statuses' => ClaimStatus::cases(),
+        ]);
+    }
+
+    public function photo(Request $request, WarrantyClaim $claim, WarrantyClaimPhoto $photo): StreamedResponse
+    {
+        abort_unless($request->user()->can('claims.view'), 403);
+        abort_unless($photo->warranty_claim_id === $claim->id, 404);
+        abort_unless($photo->existsOnDisk(), 404);
+
+        return Storage::disk($photo->disk)->response($photo->path, $photo->original_name, [
+            'Content-Type' => $photo->mime_type ?: 'application/octet-stream',
+            'Cache-Control' => 'private, max-age=3600',
         ]);
     }
 

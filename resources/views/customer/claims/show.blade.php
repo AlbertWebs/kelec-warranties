@@ -24,6 +24,7 @@
             @if ($claim->customer_notes)
                 <div><dt class="text-gray-500">Your notes</dt><dd class="mt-1 whitespace-pre-wrap">{{ $claim->customer_notes }}</dd></div>
             @endif
+            <x-claim-photo-gallery class="pt-1" :photos="$claim->photos" :claim="$claim" route-name="customer.claims.photos.show" />
         </dl>
     </section>
 </div>

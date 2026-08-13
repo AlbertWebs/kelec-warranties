@@ -7,6 +7,7 @@ use App\Enums\WarrantyStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Warranty;
 use App\Models\WarrantyClaim;
+use App\Services\ClaimPhotoService;
 use App\Services\WarrantyQueryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class WarrantyHubController extends Controller
 
     public function __construct(
         protected WarrantyQueryService $queryService,
+        protected ClaimPhotoService $claimPhotoService,
     ) {}
 
     public function show(Request $request): View|RedirectResponse
@@ -42,7 +44,7 @@ class WarrantyHubController extends Controller
 
         if ($reference = session('submitted_claim_reference')) {
             $submittedClaim = WarrantyClaim::query()
-                ->with('warranty')
+                ->with(['warranty', 'photos'])
                 ->where('reference', $reference)
                 ->first();
         }
@@ -104,11 +106,11 @@ class WarrantyHubController extends Controller
                 ->withErrors(['serial_number' => 'Claims can only be filed against an active warranty.']);
         }
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'subject' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:5000'],
             'customer_notes' => ['nullable', 'string', 'max:2000'],
-        ]);
+        ], ClaimPhotoService::validationRules()));
 
         $claim = WarrantyClaim::query()->create([
             'reference' => WarrantyClaim::generateReference(),
@@ -119,6 +121,8 @@ class WarrantyHubController extends Controller
             'customer_notes' => $validated['customer_notes'] ?? null,
             'status' => ClaimStatus::Submitted,
         ]);
+
+        $this->claimPhotoService->storeMany($claim, $request->file('photos'));
 
         $request->session()->forget(self::SESSION_WARRANTY_ID);
 
