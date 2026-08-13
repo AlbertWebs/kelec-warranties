@@ -62,7 +62,7 @@
                 </p>
             </div>
 
-            <form method="POST" action="{{ route('warranty.claim.store') }}" class="space-y-4 px-6 py-6 sm:px-8">
+            <form method="POST" action="{{ url('/warranty/claim') }}" class="space-y-4 px-6 py-6 sm:px-8">
                 @csrf
                 <div>
                     <label for="subject" class="mb-1 block text-sm font-medium text-brand-ink">Subject</label>
@@ -87,7 +87,7 @@
                 <button type="submit" class="btn-brand w-full py-3 sm:w-auto sm:px-8">Submit claim</button>
             </form>
             <div class="border-t border-gray-100 px-6 py-4 sm:px-8">
-                <form method="POST" action="{{ route('warranty.claim.reset') }}">
+                <form method="POST" action="{{ url('/warranty/claim/reset') }}">
                     @csrf
                     <button type="submit" class="text-sm font-semibold text-slate-500 hover:text-brand">Use a different warranty</button>
                 </form>
@@ -103,7 +103,7 @@
                 </p>
             </div>
 
-            <form method="POST" action="{{ route('warranty.claim.verify') }}" class="space-y-4 px-6 py-6 sm:px-8">
+            <form method="POST" action="{{ url('/warranty/claim/verify') }}" class="space-y-4 px-6 py-6 sm:px-8">
                 @csrf
                 <div>
                     <label for="serial_number" class="mb-1 block text-sm font-medium text-brand-ink">Serial number</label>

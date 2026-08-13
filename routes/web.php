@@ -54,6 +54,9 @@ Route::middleware('throttle:warranty-lookup')->group(function () {
 
 Route::middleware('throttle:warranty-lookup')->group(function () {
     Route::get('/warranty', [WarrantyHubController::class, 'show'])->name('warranty.hub');
+    Route::get('/warranty/claim/verify', fn () => redirect()->route('warranty.hub', ['tab' => 'claim']));
+    Route::get('/warranty/claim', fn () => redirect()->route('warranty.hub', ['tab' => 'claim']));
+    Route::get('/warranty/claim/reset', fn () => redirect()->route('warranty.hub', ['tab' => 'claim']));
     Route::post('/warranty/claim/verify', [WarrantyHubController::class, 'verify'])->name('warranty.claim.verify');
     Route::post('/warranty/claim', [WarrantyHubController::class, 'store'])->name('warranty.claim.store');
     Route::post('/warranty/claim/reset', [WarrantyHubController::class, 'reset'])->name('warranty.claim.reset');

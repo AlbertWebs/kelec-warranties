@@ -21,6 +21,12 @@ class WarrantyHubRouteTest extends TestCase
             ->assertSee('No account login required');
     }
 
+    public function test_get_claim_verify_redirects_to_claim_form(): void
+    {
+        $this->get('/warranty/claim/verify')
+            ->assertRedirect(route('warranty.hub', ['tab' => 'claim']));
+    }
+
     public function test_warranty_hub_default_redirects_to_register(): void
     {
         $this->get(route('warranty.hub'))
